@@ -1,4 +1,4 @@
-# __NAME__
+# strategy-lab
 
 A laboratory for deciding, before any money is at risk, whether a trading
 strategy deserves capital, and for killing it cheaply when it does not. It is
