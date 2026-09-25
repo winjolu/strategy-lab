@@ -1,0 +1,33 @@
+# Copy to holdings.toml and fill in from the broker. holdings.toml is not
+# committed. Weights are market value over the invested total; cash is left
+# out, which does not change a correlation.
+as_of = "2026-01-02"
+source = "example values, not a real account"
+
+[[holding]]
+symbol = "SPY"
+table = "fundprices"
+market_value = 5000.00
+
+[[holding]]
+symbol = "QQQ"
+table = "fundprices"
+market_value = 3000.00
+
+[[holding]]
+symbol = "VTWO"
+table = "fundprices"
+market_value = 1000.00
+
+[[holding]]
+symbol = "EWJ"
+table = "fundprices"
+market_value = 500.00
+
+# broker_symbol records how the broker spells a ticker the archive spells
+# differently.
+[[holding]]
+symbol = "BRK.B"
+broker_symbol = "BRKB"
+table = "prices"
+market_value = 500.00

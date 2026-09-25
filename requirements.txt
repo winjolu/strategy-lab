@@ -1,0 +1,12 @@
+# Pinned deliberately. An unannounced upgrade changed a library's return type
+# once already and cost a run. These are the versions market_core is known to
+# work against; they move only when something is tested against the new one.
+numpy==2.5.2
+pandas==3.0.5
+scipy==1.18.1
+statsmodels==0.15.0
+patsy==1.0.2
+pyarrow==25.0.1
+requests==2.34.2
+python-dotenv==1.2.2
+pytest==8.4.2

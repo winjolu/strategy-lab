@@ -1,0 +1,14 @@
+# Nothing written by a run belongs in the checkout. Output goes to the
+# application-support directory that market_core.paths hands out.
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+.env
+*.db
+*.sqlite
+*.parquet
+out/
+logs/
+book/holdings.toml
