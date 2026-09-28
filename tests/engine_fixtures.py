@@ -34,6 +34,7 @@ kill_criteria = "k"
 current_regime_rule = "last year"
 current_regime_start = "2024-01-01"
 data_derived_burden = "{burden}"
+{extra}
 +++
 body
 '''
@@ -41,12 +42,12 @@ body
 
 def write_registration(directory, id="toy", family="fam", provenance="literature",
                        params='{lookback = 5}', sizing='["equal_weight", "inverse_vol"]',
-                       holdout="2025-06-01", burden=""):
+                       holdout="2025-06-01", burden="", extra=""):
     path = os.path.join(directory, f"{id}.md")
     with open(path, "w") as handle:
         handle.write(REGISTRY_TEXT.format(id=id, family=family, provenance=provenance,
                                           params=params, sizing=sizing, holdout=holdout,
-                                          burden=burden))
+                                          burden=burden, extra=extra))
     return path
 
 

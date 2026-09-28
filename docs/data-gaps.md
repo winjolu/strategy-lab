@@ -7,11 +7,6 @@ un-attempted paywall as a failed retrieval would overstate how much was tried.
 
 ## Needs a person
 
-- **Repair `prices.permaticker`.** Every equity bar since about 2026-08-01
-  carries a NULL `permaticker`, the only stable company identity in the archive.
-  It blocks reliable identity joins across a rename in the current-regime window.
-  The write belongs to the archive's single writer, not to this lab. Full
-  diagnosis and the two-part fix are in `defects/permaticker-gap.md`.
 - **Chan's example code for *Algorithmic Trading* (epchan.com/book2).** Three
   catalogue entries (`xs-mr-khandani-lo`, `xs-mr-intraday-open`,
   `equity-buy-on-gap`) reproduce his rules from printed fragments whose helper
@@ -40,6 +35,8 @@ If one item is bought, it is futures data, then options. Tick data is not worth
 buying.
 
 ## Corrected since first written
+
+- **`prices.permaticker`.** Was NULL on every equity bar since about 2026-08-01, the only stable company identity in the archive. Repaired as of 2026-09-27; see `defects/permaticker-gap.md`.
 
 - **Kalshi settled-market history.** First recorded as purged and untestable. It
   is not: settled markets, candlesticks with bid and ask, and trade prints are

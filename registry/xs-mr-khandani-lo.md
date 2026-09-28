@@ -17,6 +17,7 @@ horizon = "One day. Signal at the close of day t; trade at the open of t+1; hold
 benchmark = "BIL"
 parameters = { universe_index = "sp500", signal_lookback_days = 1, gross_exposure = 1.0, decile_fraction = 0.1 }
 sizing_rules = ["linear", "decile_equal"]
+slippage_sweep_pct = [0.01, 0.02, 0.05, 0.10, 0.25]  # per side; 1,2,5,10,25bp
 holdout_start = "2024-10-01"
 kill_criteria = "Read on the linear book, next-open execution, at 5 basis points of slippage per side and 1% borrow. Record and drop if the Newey-West t on active return is below 1.5. Do not advance if the mean active return in the current-regime slice is not positive. The run is invalid, not a result, if held positions with no return were zero-filled on more than 0.1% of position-days: that is a data fault to fix first."
 current_regime_rule = "The three years before the holdout: a fixed-length window, chosen because no single structural date marks the current state of equity liquidity provision."
@@ -74,9 +75,29 @@ reported. The most useful output is the break-even cost per side, at which
 the active t reaches 0 and at which it reaches 2: it tells every other
 high-turnover entry in the catalogue what it would have to overcome.
 
-The sweep needs an engine change: `costs.SLIPPAGE_SWEEP` is a lab-wide
-constant today. A per-strategy sweep read from this file is the build, and
-the standard cells stay in every report so nothing is hidden by the change.
+The sweep is read from `slippage_sweep_pct` above: `costs.sweep` takes an
+optional override, and every other strategy keeps the lab-wide default of
+0.10%, 0.25% and 0.50% unaffected. The lab's standard headline cell
+(0.25% slippage, 8% borrow) is unchanged and still reported, since 0.25 is
+one of this strategy's own swept points.
+
+**Amended 2026-09-27, before any run.** Three engineering details the text
+above did not fix precisely. The open-to-open benchmark is BIL put through
+the same forward, next-open convention as the strategy's own returns
+(`lab.engine.returns.open_to_open`), not the ordinary close-to-close
+series, so the active-return comparison is not contaminated by a basis
+difference between the two; SPY is put on the same basis for the same
+reason. The book correlation is not: `lab.engine.book` only knows the
+close-to-close convention, so the open-to-open evaluation reports it as
+NOT COMPUTED rather than on a mismatched basis, until an open-to-open book
+series is built — a recorded gap, not a silent omission, and the
+close-to-close evaluation is unaffected. And the break-even slippage the
+report shows is read at a fixed borrow rate (8%, the sweep's
+hard-to-borrow case, since the strategy shorts) with only slippage
+varying, and is reported as "above" or "below every swept level" rather
+than extrapolated when a crossing falls outside the five points actually
+tested. None of this changes the hypothesis, the prediction or the kill
+criteria.
 
 **Missing returns.** A member removed from the index is almost always
 acquired, and its last bar is the deal price. A held name whose next open

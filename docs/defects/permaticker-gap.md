@@ -1,5 +1,12 @@
 # The incremental refresh stopped writing `permaticker`
 
+**Repaired.** Found 2026-09-23, confirmed fixed 2026-09-27: every month from
+2026-01 onward now carries zero null `permaticker` values, bars written after
+the fix included, so both the backfill and the recurring write described
+below were addressed. `lab.checks.archive_properties.stable_identity` passes
+again. Left as written at the time, since the diagnosis is still the record
+of what happened.
+
 Found 2026-09-23, while proving the data-access layer returned sane bars.
 Recorded here rather than only in my head because it changes what can be
 joined in the window this lab cares most about.

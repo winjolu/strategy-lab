@@ -10,16 +10,6 @@ Last reconciled against disk: 2026-09-23.
 
 ## 1. Blocked on outside action
 
-- **Repair `prices.permaticker`, and stop the refresh dropping it.** Every
-  equity bar since roughly 2026-08-01 carries a NULL `permaticker`, which is the
-  only stable company identity in the archive. Blocks: reliable identity joins
-  across a rename in the current-regime window, which is where out-of-sample and
-  paper-trading work happens. Needs a person because it is a write to an archive
-  with exactly one writer, and that writer is `~/market-data/market-archive`,
-  not this lab. `loader/repair.py` there already does the backfill; the affected
-  rows sit above the watermark so nothing archival is at risk. Full diagnosis,
-  cause and the two-part fix in `docs/defects/permaticker-gap.md`.
-  `lab.checks.archive_properties` fails on this today, deliberately.
 - **Schwab Trader API key.** Blocks: every options entry, and the only route to
   options history at retail depth. Unblocks `vrp-short-vol` and the four to five
   options candidates the catalogue says are missing. Not yet needed — raise it
@@ -61,19 +51,37 @@ Ranked by information gained per day of work, not by claimed return.
    entry is now a cost-and-capacity question rather than a settlement one — see
    `docs/account.md`.
    Registered 2026-09-24 (`registry/xs-mr-khandani-lo.md`), holdout from
-   2024-10-01. The build, all routine:
-   - a per-strategy slippage sweep read from the registration (1, 2, 5, 10, 25
-     bp per side), keeping the lab's standard cells in every report;
-   - point-in-time S&P 500 membership from the `sp500` table, with a check
-     that counts sit near 500 on every date;
-   - open-to-open returns on `open × closeadj / close`, plus the
-     close-to-close version for the bounce comparison, and SPY and the book
-     on the same basis;
-   - the signal and the two sizing rules (`linear`, `decile_equal`);
-   - break-even cost per side (active t = 0 and t = 2) in the report.
-   Then run Stage 1 and read it against the kill criteria.
-   Expect the first real run to shake out engine problems; better it happens
-   on a strategy with no fitted parameters.
+   2024-10-01. **Built 2026-09-27**, all five pieces, each with its own tests
+   and each guard mutation-tested (23 of 23 caught):
+   - a per-strategy slippage sweep read from the registration
+     (`costs.sweep(..., slippage_sweep=...)`), keeping every other
+     strategy's default sweep unaffected;
+   - point-in-time S&P 500 membership reconstructed from the `sp500` table's
+     event history (`lab.data.sp500_membership`), checked against every real
+     quarterly snapshot and refusing a count outside 480-520;
+   - both return conventions (`lab.engine.returns`): trailing close-to-close,
+     and a forward open-to-open convention whose last row is undefined by
+     construction, so a pre-holdout panel cannot read a holdout price
+     whatever end date is passed. SPY is put on the same basis as each;
+     the book series is not, since `lab.engine.book` only knows
+     close-to-close, so the open-to-open evaluation reports the book
+     correlation as NOT COMPUTED until an open-to-open book series exists —
+     recorded as a gap, not fixed silently;
+   - the signal and the two sizing rules, `linear` and `decile_equal`
+     (`lab.strategies.xs_mr_khandani_lo`, `lab.engine.sizing.linear` and
+     `.decile_mask`);
+   - break-even slippage at t=0 and t=2, generic to every strategy's report,
+     not just this one's (`lab.engine.report._break_even`).
+   `lab.strategies.xs_mr_khandani_lo.build(archive, start, end)` assembles all
+   of it from the archive in one call; a real-archive smoke test (a few
+   months, a throwaway results database, not the real one) proves the whole
+   chain runs for both conventions and both sizing rules end to end.
+   Next concrete action: run Stage 1 over the full in-sample range
+   (1998-03-31 to 2024-09-30) into the real results database and read it
+   against the kill criteria. Expect the first full run to take real wall
+   time (roughly 500 tickers over ~26 years) and to shake out problems a
+   short smoke test cannot; better that happens on a strategy with no fitted
+   parameters.
 
 2. **`crypto-perp-funding-carry` — spot-perpetual basis.** A perpetual future
    is a contract with no expiry that stays near the spot price because one side
@@ -147,6 +155,8 @@ Ranked by information gained per day of work, not by claimed return.
   section 2, item 1.
 
 ## 4. Finished, recorded
+
+- **`prices.permaticker` repair confirmed, 2026-09-27.** Zero nulls on every month from 2026-01 onward, backfill and recurring write both addressed. `docs/defects/permaticker-gap.md` has the incident; `lab.checks.archive_properties.stable_identity` passes again.
 
 - **Kalshi recorder running, 2026-09-23.** Quotes every 5 minutes, depth for
   the 300 most liquid markets every 15, settlements and metadata alongside,

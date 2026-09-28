@@ -103,6 +103,17 @@ class Evaluate(unittest.TestCase):
                        "upper bound", "Current regime", "Cost sweep", "run `"):
             self.assertIn(needle, text)
 
+    def test_a_registered_slippage_sweep_overrides_the_lab_default(self):
+        write_registration(self.dir, extra='slippage_sweep_pct = [0.01, 0.02, 0.05, 0.25]')
+        ev = self.go(base_cost=costs.CostModel(0.0))
+        seen = sorted({row["slippage_pct"] for row in ev.results[0].sweep})
+        self.assertEqual(seen, [0.01, 0.02, 0.05, 0.25])
+
+    def test_a_strategy_without_a_registered_sweep_keeps_the_lab_default(self):
+        ev = self.go()
+        seen = sorted({row["slippage_pct"] for row in ev.results[0].sweep})
+        self.assertEqual(seen, sorted(costs.SLIPPAGE_SWEEP))
+
     def test_a_levered_book_without_a_stated_margin_rate_never_reports(self):
         # a margin rate left unstated on a levered book must refuse
         levered = {k: v * 3 for k, v in self.w.items()}

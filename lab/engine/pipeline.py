@@ -107,7 +107,8 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
     for name, weights in weights_by_sizing.items():
         probe = backtest.run(weights, returns, base_cost.with_(borrow_apr=0.0, margin_apr=0.0), lag, on_missing)
         models = costs.sweep(base_cost, probe.has_shorts, probe.max_long_gross > 1.0 + backtest.EXPOSURE_TOLERANCE,
-                             margin_apr=base_cost.margin_apr)
+                             margin_apr=base_cost.margin_apr,
+                             slippage_sweep=reg.get("slippage_sweep_pct"))
         head = costs.headline(models)
 
         run_id = db.record_run(

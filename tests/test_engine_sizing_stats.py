@@ -54,6 +54,43 @@ class Sizing(unittest.TestCase):
     def test_kelly_is_negative_for_a_losing_stream(self):
         self.assertLess(sizing.kelly_leverage([-0.01, -0.02, 0.0]), 0)
 
+    def test_linear_scales_weight_with_the_signals_own_magnitude(self):
+        w = sizing.linear(sig([[1.0, 3.0, -2.0]], list("ABC")))
+        self.assertAlmostEqual(w["B"].iloc[0] / w["A"].iloc[0], 3.0)
+        self.assertAlmostEqual(w.iloc[0].clip(lower=0).sum(), 0.5)
+        self.assertAlmostEqual(w.iloc[0].clip(upper=0).sum(), -0.5)
+
+    def test_linear_and_equal_weight_agree_when_the_signal_is_already_sign_only(self):
+        s = sig([[1.0, -1.0, 1.0, -1.0]], list("ABCD"))
+        pd.testing.assert_frame_equal(sizing.linear(s), sizing.equal_weight(s, long_short=True))
+
+    def test_decile_mask_selects_the_top_and_bottom_tenth(self):
+        s = sig([list(range(10))], [f"S{i}" for i in range(10)])
+        mask = sizing.decile_mask(s, fraction=0.1)
+        self.assertEqual(mask.iloc[0].tolist(), [-1, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+
+    def test_decile_mask_ranks_within_the_row_not_across_rows(self):
+        s = sig([[10, 20, 30], [1, 2, 3]], list("ABC"))
+        mask = sizing.decile_mask(s, fraction=0.34)
+        self.assertEqual(mask.iloc[0].tolist(), mask.iloc[1].tolist())
+
+    def test_decile_mask_treats_a_missing_name_as_not_selected(self):
+        s = sig([[1, 2, np.nan, 4]], list("ABCD"))
+        mask = sizing.decile_mask(s, fraction=0.25)
+        self.assertEqual(mask["C"].iloc[0], 0.0)
+        self.assertFalse(mask.isna().any().any())
+
+    def test_decile_mask_is_ready_for_equal_weight_without_further_filling(self):
+        s = sig([[1, 2, 3, 4, np.nan]], list("ABCDE"))
+        w = sizing.equal_weight(sizing.decile_mask(s, fraction=0.25), long_short=True)
+        self.assertEqual(w["E"].iloc[0], 0.0)
+
+    def test_decile_mask_refuses_a_fraction_outside_zero_to_half(self):
+        with self.assertRaises(sizing.SizingError):
+            sizing.decile_mask(sig([[1, 2]], list("AB")), fraction=0.6)
+        with self.assertRaises(sizing.SizingError):
+            sizing.decile_mask(sig([[1, 2]], list("AB")), fraction=0.0)
+
 
 class Bands(unittest.TestCase):
     def test_the_boundaries_use_the_methodologys_words(self):

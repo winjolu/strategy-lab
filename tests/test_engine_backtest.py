@@ -200,6 +200,21 @@ class Sweep(unittest.TestCase):
         h = costs.headline(costs.sweep(CostModel(0.1), True, False))
         self.assertEqual((h.slippage_pct, h.borrow_apr), (0.25, 8.0))
 
+    def test_a_slippage_override_replaces_the_swept_points(self):
+        models = costs.sweep(CostModel(0.1), has_shorts=False, has_leverage=False,
+                             slippage_sweep=(0.01, 0.02, 0.05))
+        self.assertEqual(sorted(m.slippage_pct for m in models), [0.01, 0.02, 0.05])
+
+    def test_a_slippage_override_does_not_change_the_default_for_other_callers(self):
+        costs.sweep(CostModel(0.1), False, False, slippage_sweep=(0.01,))
+        models = costs.sweep(CostModel(0.1), False, False)
+        self.assertEqual(sorted(m.slippage_pct for m in models), sorted(costs.SLIPPAGE_SWEEP))
+
+    def test_the_headline_still_resolves_when_the_override_includes_it(self):
+        h = costs.headline(costs.sweep(CostModel(0.1), True, False,
+                                       slippage_sweep=(0.01, 0.02, 0.05, 0.10, 0.25)))
+        self.assertEqual((h.slippage_pct, h.borrow_apr), (0.25, 8.0))
+
 
 if __name__ == "__main__":
     unittest.main()

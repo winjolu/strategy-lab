@@ -54,6 +54,39 @@ def equal_weight(signal, gross=1.0, long_short=False):
     return _normalise(np.sign(signal).astype(float), gross, long_short)
 
 
+def linear(signal, gross=1.0, long_short=True):
+    """Weight proportional to the signal's own magnitude, not just its
+    sign. A name that moved three times as far from the mean as another
+    gets three times the weight, before the two sides are each scaled to
+    their share of `gross` — unlike `equal_weight`, which reduces every
+    non-zero signal to +1 or -1 first and so cannot tell a large move from
+    a small one.
+    """
+    _check(signal, long_short)
+    return _normalise(signal.astype(float), gross, long_short)
+
+
+def decile_mask(signal, fraction=0.1):
+    """+1 for the top `fraction` of each row's signal, -1 for the bottom
+    `fraction`, 0 for the rest — including anywhere `signal` is missing.
+
+    Ranked per row (per date), so a date's decile line is drawn only from
+    the names eligible that day; a name absent from today's universe never
+    displaces one that is present. `signal` may carry NaN for an
+    ineligible name, unlike every other sizing function here, and the
+    output never does: pandas leaves the rank of a NaN cell as NaN, and a
+    NaN threshold comparison is always False, so an ineligible name falls
+    through to 0 rather than needing a separate NaN check.
+    """
+    if not 0 < fraction <= 0.5:
+        raise SizingError(f"fraction must be in (0, 0.5], got {fraction}")
+    pct = signal.rank(axis=1, pct=True, na_option="keep")
+    out = pd.DataFrame(0.0, index=signal.index, columns=signal.columns)
+    out[pct > 1.0 - fraction] = 1.0
+    out[pct <= fraction] = -1.0
+    return out
+
+
 def inverse_vol(signal, vol, gross=1.0, long_short=False):
     """Weight inversely to trailing volatility, within each side.
 

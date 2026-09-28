@@ -48,13 +48,15 @@ def test_each_check_runs_against_the_real_archive(archive, check):
     assert result.measured is not None
 
 
-def test_the_suite_reports_the_known_defect(archive):
-    """The permaticker gap is real and currently failing. If this ever
-    starts passing, the archive has been repaired and the queue entry for
-    it should be closed rather than the test being loosened."""
+def test_the_permaticker_gap_is_repaired(archive):
+    """Failed here from 2026-09-23 (found) to 2026-09-27 (confirmed
+    repaired: zero nulls on every month from 2026-01 onward, including bars
+    written after the fix, so both the backfill and the recurring write
+    were addressed). `docs/defects/permaticker-gap.md` has the incident. If
+    this starts failing again, the regression is the news, not this test."""
     result = props.stable_identity(archive)
-    assert not result.passed
-    assert result.measured["recent_null_share"] > 0.01
+    assert result.passed
+    assert result.measured["recent_null_share"] == 0.0
 
 
 # -- and fail when the property is violated ----------------------------

@@ -52,15 +52,25 @@ class CostModel:
         return replace(self, **changes)
 
 
-def sweep(base, has_shorts, has_leverage, margin_apr=None):
+def sweep(base, has_shorts, has_leverage, margin_apr=None, slippage_sweep=None):
     """Every cost model the methodology wants reported for one strategy.
 
     Borrow varies only when the strategy shorts, and margin interest is
     carried through unchanged when it borrows to lever.
+
+    `slippage_sweep` overrides the lab-wide `SLIPPAGE_SWEEP` for a
+    strategy whose standard three points would decide the answer before
+    the backtest runs — one trading several times its gross per day,
+    where even the cheapest standard cell already consumes most of any
+    plausible edge, needs finer resolution to say anything. Every other
+    caller is unaffected: the default is exactly the module constant it
+    always was, so nothing lab-wide changes because one strategy needed
+    this.
     """
+    slippage_sweep = slippage_sweep or SLIPPAGE_SWEEP
     borrows = BORROW_SWEEP if has_shorts else (None,)
     out = []
-    for slip in SLIPPAGE_SWEEP:
+    for slip in slippage_sweep:
         for borrow in borrows:
             out.append(base.with_(
                 slippage_pct=slip, borrow_apr=borrow,

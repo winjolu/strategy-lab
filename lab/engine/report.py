@@ -28,8 +28,54 @@ def _corr(c):
     return "NOT COMPUTED (no series supplied)" if c is None else f"{c['corr']:+.2f} (n={c['n']})"
 
 
+def _break_even(sweep, borrow_apr, targets=(0.0, 2.0)):
+    """The slippage per side, at a fixed borrow rate, where active t
+    crosses each target — by linear interpolation between the two swept
+    points that bracket it.
+
+    Reports how far a crossing sits from what was actually measured
+    rather than guessing past it: 'above every swept level' means t stays
+    above the target even at the highest cost tested, and the true
+    break-even is more expensive than anything checked; 'below the lowest
+    swept level' means it is already below target at the cheapest cost
+    tested, so there is nothing left to interpolate towards.
+    """
+    rows = sorted((r for r in sweep if r["borrow_apr"] == borrow_apr),
+                 key=lambda r: r["slippage_pct"])
+    out = {}
+    for target in targets:
+        found = None
+        for r in rows:
+            if r["active_t"] == target:
+                found = r["slippage_pct"]
+                break
+        if found is None:
+            for a, b in zip(rows, rows[1:]):
+                if (a["active_t"] - target) * (b["active_t"] - target) < 0:
+                    frac = (target - a["active_t"]) / (b["active_t"] - a["active_t"])
+                    found = a["slippage_pct"] + frac * (b["slippage_pct"] - a["slippage_pct"])
+                    break
+        if found is None and rows:
+            if all(r["active_t"] > target for r in rows):
+                found = f"above every swept level (t stays above {target:g} even at {rows[-1]['slippage_pct']}%)"
+            elif all(r["active_t"] < target for r in rows):
+                found = f"below the lowest swept level (t is already below {target:g} at {rows[0]['slippage_pct']}%)"
+        out[target] = found
+    return out
+
+
+def _fmt_break_even(v):
+    if v is None:
+        return "n/a"
+    if isinstance(v, str):
+        return v
+    return f"{v:.3f}% per side ({v * 100:.1f}bp)"
+
+
 def _sizing_block(r, benchmark):
     h = r.headline
+    borrow_used = HEADLINE_BORROW if r.has_shorts else None
+    be = _break_even(r.sweep, borrow_used)
     lines = [f"### Sizing rule: {r.name}   (run `{r.run_id}`)", ""]
     lines += [
         f"Headline cost cell: slippage {HEADLINE_SLIPPAGE}% per side"
@@ -38,6 +84,8 @@ def _sizing_block(r, benchmark):
         f"- **Significance (active return vs {benchmark}):** t = {_f(h['active_t_newey_west'])} "
         f"Newey-West, {h['active_hac_lags']} lags. Band: **{h['band']}**"
         + (" (negative: the edge is below the benchmark)" if h['active_t_newey_west'] < 0 else "") + ".",
+        f"- Break-even slippage, at {_f(borrow_used, '.0f') + '%' if borrow_used is not None else 'no'} "
+        f"borrow: t=0 at {_fmt_break_even(be[0.0])}; t=2 at {_fmt_break_even(be[2.0])}.",
         f"- Active return: {_f(h['active_mean_pct_per_year'])}% a year (active); "
         f"active Sharpe {_f(h['active_sharpe_annual'])} annualised (active).",
         f"- Absolute: CAGR {_f(h['absolute_cagr_pct'])}% (abs), Sharpe "
