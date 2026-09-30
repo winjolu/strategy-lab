@@ -14,8 +14,59 @@ stay honest.
 
 ## [Unreleased]
 
-Nothing yet. The next entry will be the first Stage 1 result for
-`xs-mr-khandani-lo`, whatever it turns out to be.
+Nothing yet.
+
+## 2026-09-30
+
+### Added
+- The first Stage 1 result. `xs-mr-khandani-lo`, cross-sectional mean
+  reversion on the S&P 500, is killed. Before costs the edge is real: +7.15%
+  a year over 1998–2024 (t 3.6), most of it before 2009. But the book trades
+  1.45 times its equity a day, and that return pays for only about 1.8 basis
+  points of cost per side. At the registered kill cell (5bp per side, 1%
+  borrow) the t-statistic on active return is −5.52 against a threshold of
+  +1.5. The result settles a question for the whole catalogue: a book turned
+  over daily on the most liquid US stocks needs all-in costs under about 2bp
+  per side to survive.
+- One prediction failed. Trading at the same close, the published
+  convention, was expected to earn clearly more than trading at the next
+  open, the difference being bid-ask bounce. It earned less: 4.90% against
+  7.15% a year before costs.
+
+### Fixed
+- The runner passed the holdout date itself as the end of the fetch window,
+  which the archive reads inclusively, so the close-to-close series ended on
+  the first holdout day. The pipeline's holdout guard refused to run, which
+  is what it is for. The window now ends on the last trading day strictly
+  before the holdout, taken from the archive's calendar. The docstrings that
+  claimed the open-to-open construction made this impossible whatever date
+  was passed were wrong and are corrected: dropping the last row guards
+  against reading past the fetch, not against fetching too far.
+
+### Known
+- The registered benchmark silently truncated the sample. BIL begins trading
+  2007-05-30, and the statistics keep only dates both series share, so every
+  registered figure covers 2007–2024, not 1998–2024. The report showed it
+  only as a day count. A full-sample diagnostic confirmed the verdict does
+  not depend on the missing years. Making the pipeline refuse, or at least
+  print, a window shorter than the returns supplied is queued.
+- The report's break-even line is read at 8% borrow, where a short book is
+  already negative at the cheapest cost, so it said nothing. At 1% it is
+  about 1.3bp. Queued.
+
+## 2026-09-27
+
+### Added
+- Everything `xs-mr-khandani-lo` needed to run: point-in-time S&P 500
+  membership reconstructed from the index's event history and checked
+  against every real quarterly snapshot; two return conventions,
+  close-to-close and next-open; a per-strategy cost sweep that leaves every
+  other strategy's default alone; the signal and its two sizing rules; and a
+  break-even cost figure in every report.
+
+### Fixed
+- The `permaticker` gap in the archive is repaired: zero nulls on every
+  month from January onward, confirmed against the archive directly.
 
 ## 2026-09-24
 

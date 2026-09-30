@@ -41,48 +41,23 @@ Last reconciled against disk: 2026-09-23.
 
 Ranked by information gained per day of work, not by claimed return.
 
-1. **`xs-mr-khandani-lo` — cross-sectional mean reversion.** Zero fitted
-   parameters. Its real value is that it turns over 200% of gross per day, so it
-   is the sharpest available test of whether any high-turnover equity strategy
-   survives realistic costs in this account. That question decides roughly ten
-   other entries at once. It was untradeable in a cash account on T+1
-   settlement; the planned move to margin removes that specific block, since a
-   close-to-close rebalance held overnight is not a pattern-day-trade, so the
-   entry is now a cost-and-capacity question rather than a settlement one — see
-   `docs/account.md`.
-   Registered 2026-09-24 (`registry/xs-mr-khandani-lo.md`), holdout from
-   2024-10-01. **Built 2026-09-27**, all five pieces, each with its own tests
-   and each guard mutation-tested (23 of 23 caught):
-   - a per-strategy slippage sweep read from the registration
-     (`costs.sweep(..., slippage_sweep=...)`), keeping every other
-     strategy's default sweep unaffected;
-   - point-in-time S&P 500 membership reconstructed from the `sp500` table's
-     event history (`lab.data.sp500_membership`), checked against every real
-     quarterly snapshot and refusing a count outside 480-520;
-   - both return conventions (`lab.engine.returns`): trailing close-to-close,
-     and a forward open-to-open convention whose last row is undefined by
-     construction, so a pre-holdout panel cannot read a holdout price
-     whatever end date is passed. SPY is put on the same basis as each;
-     the book series is not, since `lab.engine.book` only knows
-     close-to-close, so the open-to-open evaluation reports the book
-     correlation as NOT COMPUTED until an open-to-open book series exists —
-     recorded as a gap, not fixed silently;
-   - the signal and the two sizing rules, `linear` and `decile_equal`
-     (`lab.strategies.xs_mr_khandani_lo`, `lab.engine.sizing.linear` and
-     `.decile_mask`);
-   - break-even slippage at t=0 and t=2, generic to every strategy's report,
-     not just this one's (`lab.engine.report._break_even`).
-   `lab.strategies.xs_mr_khandani_lo.build(archive, start, end)` assembles all
-   of it from the archive in one call; a real-archive smoke test (a few
-   months, a throwaway results database, not the real one) proves the whole
-   chain runs for both conventions and both sizing rules end to end.
-   Next concrete action: run Stage 1 over the full in-sample range
-   (1998-03-31 to 2024-09-30) into the real results database and read it
-   against the kill criteria. Expect the first full run to take real wall
-   time (roughly 500 tickers over ~26 years) and to shake out problems a
-   short smoke test cannot; better that happens on a strategy with no fitted
-   parameters.
-
+1. **Fix the two defects the first real Stage 1 run exposed.** Both are
+   routine builds and both would have misled a closer result.
+   - **Refuse a benchmark that does not cover the sample.** `stats.summarise`
+     inner-joins the strategy with its benchmark and drops the rest silently.
+     `xs-mr-khandani-lo` registered BIL, which starts 2007-05-30, so nine of
+     its 26 years vanished from every figure and the report said only
+     "n=4364". The evaluated window should be printed in every report, and
+     the pipeline should refuse (or require an explicit acknowledgement) when
+     it starts materially later than the returns supplied. Pre-2007 has no
+     Treasury-bill ETF in `fundprices`; a registration needing that span has
+     to name a different cash benchmark or accept the shorter sample in
+     writing before running.
+   - **Show break-even at every swept borrow rate.** The report reads it only
+     at 8%, where a short book is already negative at the cheapest cost, so
+     the line said nothing. At 1% the answer was about 1.3bp.
+   Also noticed: the current-regime slice is computed only at the headline
+   cost cell, while a kill criterion may read it at another.
 2. **`crypto-perp-funding-carry` — spot-perpetual basis.** A perpetual future
    is a contract with no expiry that stays near the spot price because one side
    pays the other a periodic funding rate. Holding spot and shorting the
@@ -155,6 +130,18 @@ Ranked by information gained per day of work, not by claimed return.
   section 2, item 1.
 
 ## 4. Finished, recorded
+
+- **`xs-mr-khandani-lo` killed at Stage 1, 2026-09-30.** Kill cell (linear,
+  next-open, 5bp per side, 1% borrow) active t = −5.52; the threshold was
+  1.5. Before costs the edge is real, +7.15% a year over 1998–2024 (t 3.6),
+  mostly before 2009, but it trades 1.45 times equity a day and pays for only
+  about 1.8bp per side. What it settles for the rest of the catalogue: a book
+  turned over daily on S&P 500 names needs all-in costs under about 2bp per
+  side. One prediction failed: trading at the same close earned less than the
+  next open, not more. Full record, run ids and the benchmark truncation in
+  `registry/xs-mr-khandani-lo.md`. The runner is
+  `scripts/run_xs_mr_khandani_lo_stage1.py`; the build behind it is
+  `lab.strategies.xs_mr_khandani_lo`.
 
 - **`prices.permaticker` repair confirmed, 2026-09-27.** Zero nulls on every month from 2026-01 onward, backfill and recurring write both addressed. `docs/defects/permaticker-gap.md` has the incident; `lab.checks.archive_properties.stable_identity` passes again.
 

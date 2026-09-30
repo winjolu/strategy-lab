@@ -13,16 +13,22 @@ come after.
 
 ## Where it stands
 
-**No strategy has been backtested yet, deliberately.** What exists is the
-machinery that decides whether a result can be believed, two registered
-strategies waiting on it, and the data collection that could not wait.
+**One strategy has been tested, and killed.** Cross-sectional mean
+reversion on the S&P 500 (`xs-mr-khandani-lo`) has a real edge before costs,
++7.15% a year over 1998–2024 with t = 3.6, but it trades its whole book
+about one and a half times a day and pays for only about 1.8 basis points of
+cost per side. At its registered kill threshold, 5 basis points and 1%
+borrow, the t-statistic on active return is −5.52. The result sets a bar for
+every other high-turnover strategy in the catalogue, and the prediction
+written before the run got one thing wrong (see `registry/`).
 
 | | |
 |---|---|
 | Candidate strategies catalogued | 41, ranked by information gained per day of work |
 | Strategies registered (prediction and kill criteria fixed before any run) | 2 |
-| Tests | 232 |
-| Guards deliberately broken to prove the tests notice | 105, all caught |
+| Strategies tested at Stage 1 | 1, killed |
+| Tests | 283 |
+| Guards deliberately broken to prove the tests notice | 128, all caught |
 | Data collected forward that no vendor sells | Kalshi quotes and order book depth, recorded continuously |
 
 ## What building it has already found
@@ -102,14 +108,16 @@ lab/
   engine/      backtest, costs, sizing, statistics, registry, pipeline, report,
                event-contract fees, book-returns series
   results/     runs, trials and figures, behind a backend seam for the move to Postgres
+  strategies/  one module per registered strategy: its signal and sizing
   recorders/   the forward Kalshi recorder
   checks/      property tests on the archive itself
 registry/      one file per strategy, and the template
 book/          the shape of the holdings file the correlation series reads
 ops/           installer for the recorder's scheduled jobs
+scripts/       the Stage 1 runners, one per strategy
 docs/          the audit trail: account constraints, archive survey, defects,
                reviews, the catalogue and its ranking
-tests/         232 tests
+tests/         283 tests
 ```
 
 The shared data layer, `market_core`, is a separate private package used by this
@@ -136,7 +144,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/pip install -e "$HOME/market-data/market-core"
 
-.venv/bin/python -m pytest                             # 232 tests
+.venv/bin/python -m pytest                             # 283 tests
 cp book/holdings.example.toml book/holdings.toml       # then fill in real holdings
 .venv/bin/python -m lab.recorders.kalshi status        # forward recorder health
 ```

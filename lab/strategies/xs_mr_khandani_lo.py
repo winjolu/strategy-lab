@@ -81,13 +81,13 @@ def build(archive, start, end, benchmark_ticker="BIL", spy_ticker="SPY",
     """Assemble `RunInputs` from the archive, reading bars only in
     `[start, end]`.
 
-    That range is the whole of the look-ahead protection for the
-    open-to-open frame: its last row needs an open beyond the fetched
-    bars to compute and comes back NaN, so it is dropped by construction
-    (see `lab.engine.returns.open_to_open`). A caller building a
-    pre-holdout panel passes `end` at or before the holdout date and the
-    frame this returns structurally cannot contain a holdout price,
-    independent of anything the caller remembers to check.
+    `end` is inclusive. A pre-holdout panel must pass the last trading
+    day strictly before the holdout, never the holdout date itself:
+    passing the holdout date puts a holdout close in the close-to-close
+    frame's last row. The open-to-open frame's dropped last row guards
+    only against reading past `end`, not against `end` being wrong. The
+    pipeline's holdout guard refuses the mistake, which is how it was
+    found.
 
     `min_members`/`max_members` default to the real index's measured
     band and only need overriding against a synthetic universe far

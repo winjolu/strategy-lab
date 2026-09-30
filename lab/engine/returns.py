@@ -15,10 +15,10 @@ open of d to the open of the next trading day, so a decision dated t
 applied with `lag=1` lands on this frame's row t+1 and earns exactly the
 open(t+1)-to-open(t+2) period. The last row is always undefined, because it
 needs an open beyond the fetched bars to compute, and is dropped rather
-than filled. That is also what keeps a pre-holdout panel from ever reading
-a holdout price: as long as the bars behind it are never fetched past the
-holdout boundary, the row that would need a holdout open simply cannot be
-built, whatever date is passed as the boundary.
+than filled. That protects only against the day after the last one
+fetched. It does nothing about the fetch itself: a caller that reads bars
+through the holdout date gets a holdout price in both conventions, so the
+boundary must be the last trading day strictly before the holdout.
 """
 import numpy as np
 

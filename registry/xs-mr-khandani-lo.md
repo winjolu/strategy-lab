@@ -5,7 +5,7 @@ provenance = "literature"
 source = "Khandani and Lo, What Happened to the Quants in August 2007? (Journal of Investment Management, 2007); replicated in Chan, Algorithmic Trading (2013), Example 4.3. Catalogue entry xs-mr-khandani-lo."
 account = "individual-margin"
 enabling_step = "Fund the margin account (the planned move). Shorting needs it; the daily rebalance is held overnight, so it creates no pattern-day-trader day trades."
-stage = 0
+stage = 1
 
 [registration]
 registered_on = "2026-09-24"
@@ -141,7 +141,55 @@ bounds.
 
 ## Stage results
 
-None yet.
+### Stage 1, 2026-09-30: killed
+
+Runs, next-open execution: `b7b5ee2943e947438a7810a921b03f8a` (linear),
+`f5806703a4414823932de9a21187a784` (decile). Same-close execution, the
+published convention: `23c18299157b4e78bda0eda6f9582580` (linear),
+`402e8852779e4bdbaed4369c8fa26c94` (decile). Reports in the lab's data
+directory under `reports/`.
+
+**Kill cell** (linear, next-open, 5bp per side, 1% borrow): active t =
+**−5.52**, active return −13.50% a year (active). The criterion was t
+below 1.5. Dropped.
+
+**The registered benchmark truncated the sample.** BIL begins trading
+2007-05-30, and `stats.summarise` keeps only dates both series share, so
+every registered figure covers 2007-05-30 to 2024-09-30 (4,364 days), not
+the registered 1998-03-31 start. The years the prediction said held most
+of the edge are exactly the ones dropped. A diagnostic outside the
+pipeline, not a registered figure and not recorded as a trial, measured
+the gross return (no costs, no benchmark) over the whole sample:
+
+| period | linear, next-open (abs) | decile, next-open (abs) |
+|---|---|---|
+| 1998–2006 | +9.04%/yr, t 2.8 | +18.38%/yr, t 4.8 |
+| 2007–2008 | +22.19%/yr, t 1.7 | +18.57%/yr, t 1.4 |
+| 2009–2020 | +3.59%/yr, t 1.4 | +4.84%/yr, t 1.6 |
+| 2021–2024 | +6.10%/yr, t 1.4 | +6.44%/yr, t 1.2 |
+| full | +7.15%/yr, t 3.6 | +10.57%/yr, t 4.7 |
+
+At 1.45 (linear) and 1.71 (decile) of equity traded a day, that gross
+return pays for about 1.8bp and 2.3bp per side over the full sample, and
+about 4bp for the decile book in its best era, 1998–2006. The kill cell is
+5bp, so the truncation does not change the verdict.
+
+**Against the prediction.** Confirmed: a positive gross return with |t|
+above 3 over the full sample; most of it before 2009; break-even between
+1 and 4bp per side (1.3bp on the registered sample at 1% borrow, about
+1.8bp on the full sample); killed at the kill cell; the decile book earns
+more per unit of turnover (0.025% against 0.020% of gross per unit) without
+changing the conclusion. Partly: the current regime is smaller than
+before 2009 but larger than 2009–2020. **Wrong:** the same-close version
+was predicted to earn clearly more than next-open, the difference being
+bid-ask bounce. It earned less, 4.90% against 7.15% a year gross (linear).
+One candidate explanation is that closing prices are auction prints with
+little bounce in them; that is untested.
+
+**What it settles beyond this strategy.** A book traded once or twice a
+day on S&P 500 names needs all-in costs below roughly 2bp per side to
+survive. Every other high-turnover equity entry in the catalogue faces
+that bar.
 
 ## Variants
 
@@ -156,3 +204,4 @@ effort; a verdict with no run id is not one.
 
 | date | verdict | run id | basis |
 |------|---------|--------|-------|
+| 2026-09-30 | killed at Stage 1 | `b7b5ee2943e947438a7810a921b03f8a` | kill cell t = −5.52 against a threshold of 1.5; full-sample break-even about 1.8bp per side |
