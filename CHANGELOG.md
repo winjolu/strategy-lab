@@ -16,6 +16,20 @@ stay honest.
 
 Nothing yet.
 
+## 2026-10-03
+
+### Added
+- A review of the lab's evaluation rules, `docs/reviews/stage-rules-2026-10-02.md`.
+  It found nine places where the rules disagreed with each other or with the
+  code, the worst being that the kill verdict was read at 5bp and 1% borrow
+  while the report's headline, its current-regime slice and the Sharpe stored
+  for deflation were computed at 25bp and 8%. It also measured what a
+  two-window gate costs: requiring two short windows to pass separately
+  rejects a strategy with a true Sharpe of 1.5 three times in four. The
+  general rules it settled on now live in the shared method file under
+  "Evaluation stages"; the review keeps the findings, the arithmetic and the
+  list of code changes, none of which is built yet.
+
 ## 2026-09-30
 
 ### Added
