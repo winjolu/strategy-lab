@@ -45,15 +45,20 @@ Ranked by information gained per day of work, not by claimed return.
    is a contract with no expiry that stays near the spot price because one side
    pays the other a periodic funding rate. Holding spot and shorting the
    perpetual removes price risk and collects that payment when longs are paying.
-   The catalogue ranks it third overall, and its test data is free: funding
-   history from large offshore exchanges (Binance, Bybit, OKX), whether or not
-   a perpetual is tradeable from this account. It needs two builds first: a
-   fetcher for that public history, and a funding-payment term in the cost
-   model, which today has slippage, commission, borrow and margin interest only.
-   The venue question was wrong in `docs/account.md` and is corrected there:
-   Kalshi lists perpetuals. Still to check with Kalshi and the broker: whether
-   this account can trade them, how their funding is set, and what history
-   exists.
+   The catalogue ranks it third overall. **Measured 2026-10-05
+   (`docs/perp-funding-survey.md`): the data premise was wrong.** Binance and
+   Bybit refuse this location, OKX serves only three months of funding and
+   Kraken one year. Deribit serves hourly funding back to at least 2019 for BTC
+   and ETH only, as coin-margined contracts; Hyperliquid serves many coins but
+   only from 2023-05. So the test is BTC and ETH on Deribit, with Hyperliquid as
+   a cross-check where the coins overlap. Still to build: a fetcher for that
+   history, and a funding-payment term in the cost model, which today has
+   slippage, commission, borrow and margin interest only. Then the registration
+   under rule set v2, which is the part that needs a stronger model: what
+   convexity and venue-specific rules mean for the hypothesis, and what the
+   prediction and kill criteria are. Still to check with Kalshi and the broker,
+   and not needed to test it: whether this account can trade perpetuals, how
+   their funding is set, and what history exists.
 2. **Build the Compustat-to-Sharadar field map for the 23 OSAP entries.** The
    catalogue's claim that 29 entries are testable today rests on an unverified
    assumption that this archive carries the accounting fields the OSAP
