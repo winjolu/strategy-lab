@@ -41,43 +41,7 @@ Last reconciled against disk: 2026-09-23.
 
 Ranked by information gained per day of work, not by claimed return.
 
-1. **Build the evaluation rules into the engine.** The rules adopted on
-   2026-10-03 (shared `METHODOLOGY.md`, "Evaluation stages"; reasoning and
-   findings in `docs/reviews/stage-rules-2026-10-02.md`) are not enforced by
-   any code, so no strategy can be judged under them yet. This item also
-   absorbs the two defects the first Stage 1 run exposed, which turned out to
-   be symptoms of the same gap. Routine builds, in this order:
-   - **The decision cell as registered fields.** The registration names the
-     one sizing rule, execution convention and cost cell the verdict reads,
-     and the pipeline computes the headline, the current-regime slice and the
-     Sharpe stored for deflation there. Today the kill rule is read at 5bp and
-     1% borrow while those figures are computed at 25bp and 8%.
-   - **The score and the holdout rules.** Net-of-cost Sharpe of the active
-     return over training and holdout pooled, tiers at 1.0 and 1.5, the
-     out-of-sample score withheld until the holdout holds a year, and every
-     look at the holdout recorded in the database and counted.
-   - **Gates and flags separated.** `stats.band()` stops returning a verdict
-     phrase, the minimum track record is always computed, and CAGR leaves the
-     report body.
-   - **Refuse a benchmark that does not cover the sample.** `stats.summarise`
-     inner-joins the strategy with its benchmark and drops the rest silently.
-     `xs-mr-khandani-lo` registered BIL, which starts 2007-05-30, so nine of
-     its 26 years vanished from every figure and the report said only
-     "n=4364". Print the evaluated window in every report and refuse, or
-     require a written acknowledgement, when the benchmark starts materially
-     later than the returns. Pre-2007 has no Treasury-bill ETF in
-     `fundprices`.
-   - **Break-even at every swept borrow rate**, not only 8%, where a short
-     book is already negative at the cheapest cost.
-   - **The random-thinning control.** The shared method requires one on every
-     filter and nothing implements it. Build it or take it out of the shared
-     method; either way, decide.
-   Decided 2026-10-05 (shared `METHODOLOGY.md`): new equity registrations
-   use a holdout from 2025-10-01, moving each 1 October; a measured Sharpe is
-   halved before sizing; published effect sizes are halved; a name is
-   tradeable at no more than 1% of its average daily dollar volume; at most
-   two variants per strategy.
-2. **`crypto-perp-funding-carry` — spot-perpetual basis.** A perpetual future
+1. **`crypto-perp-funding-carry` — spot-perpetual basis.** A perpetual future
    is a contract with no expiry that stays near the spot price because one side
    pays the other a periodic funding rate. Holding spot and shorting the
    perpetual removes price risk and collects that payment when longs are paying.
@@ -90,7 +54,7 @@ Ranked by information gained per day of work, not by claimed return.
    Kalshi lists perpetuals. Still to check with Kalshi and the broker: whether
    this account can trade them, how their funding is set, and what history
    exists.
-3. **Build the Compustat-to-Sharadar field map for the 23 OSAP entries.** The
+2. **Build the Compustat-to-Sharadar field map for the 23 OSAP entries.** The
    catalogue's claim that 29 entries are testable today rests on an unverified
    assumption that this archive carries the accounting fields the OSAP
    definitions name. Until the map exists, that count means nothing.
@@ -98,7 +62,7 @@ Ranked by information gained per day of work, not by claimed return.
    against the 112 columns of `fundamentals`.
    Routine work, gates the next item and any OSAP entry.
 
-4. **Value-weighting versus equal-weighting across three OSAP entries.** A
+3. **Value-weighting versus equal-weighting across three OSAP entries.** A
    methodology test rather than a strategy, and the highest-value single day in
    the catalogue: it plausibly eliminates half the equity set.
    Depends on the field map above.
@@ -149,6 +113,25 @@ Ranked by information gained per day of work, not by claimed return.
   section 2, item 1.
 
 ## 4. Finished, recorded
+
+- **The evaluation rules built into the engine, 2026-10-05.** Rule set v2,
+  adopted into the shared method on 2026-10-03, is now enforced by code. A
+  registration under it names its sizing rule, execution convention and cost
+  cell as fields, and every headline figure, the regime slice and the stored
+  Sharpe are computed there. The score is the active Sharpe, net of cost, over
+  the three-year training window and the holdout pooled, with tiers at 1.0 and
+  1.5; Stage 1 reports the training half as provisional. The holdout's half
+  waits for a year of data, is read once per strategy under the registered
+  execution convention, and every read is recorded and counted. Band labels
+  describe and decide nothing, the minimum track record is always reported,
+  CAGR is out of the report body, a benchmark that silently shortens the
+  sample is refused, break-even is shown at every borrow rate, and the
+  random-thinning control exists (`lab/engine/controls.py`). 347 tests;
+  51 more deliberate breakages, all caught. Still unbuilt from the review: the
+  per-name spread estimate for thin names, and a re-registration of
+  `xs-mr-khandani-lo`-style strategies under v2 when one is next registered.
+  The current-regime slice is now computed at the decision cell, which closes
+  the last point noted under the old item 1.
 
 - **`xs-mr-khandani-lo` killed at Stage 1, 2026-09-30.** Kill cell (linear,
   next-open, 5bp per side, 1% borrow) active t = −5.52; the threshold was

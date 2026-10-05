@@ -16,6 +16,37 @@ stay honest.
 
 Nothing yet.
 
+## 2026-10-05
+
+### Added
+- Rule set v2 is enforced by code. A registration under it names its sizing
+  rule, execution convention, slippage and borrow, and the pipeline computes
+  every headline figure, the current-regime slice and the Sharpe stored for
+  deflation at that cell, refusing a cell the sweep did not compute. The
+  score is the annualised active Sharpe, net of cost, over the three-year
+  training window and the holdout pooled, with tiers at 1.0 and 1.5. The
+  holdout's half is withheld until it holds a year, read once per strategy
+  under the registered execution convention, and every read is recorded in
+  the results database under a uniqueness constraint and counted in the report.
+- A random-thinning control (`lab/engine/controls.py`): where a filter's
+  result falls among random masks that keep the same number of names on every
+  date.
+- The report prints the window actually evaluated, and break-even slippage at
+  every swept borrow rate.
+
+### Changed
+- Band labels describe a t-statistic's size and decide nothing; the label
+  that read "record and drop" is now "weak". The minimum track record is
+  computed and printed for every run, not only one band. CAGR is out of the
+  report body in favour of Sharpe.
+
+### Fixed
+- A benchmark that starts late no longer shortens the evaluated sample
+  silently. The pipeline refuses one with no observation on more than two
+  percent of the return dates, unless the registration carries a written
+  acknowledgement. The first Stage 1 run lost nine of twenty-six years this way.
+- A constant return record has an undefined score instead of a float-noise one.
+
 ## 2026-10-03
 
 ### Added

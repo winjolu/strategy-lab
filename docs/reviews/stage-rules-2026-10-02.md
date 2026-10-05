@@ -333,16 +333,16 @@ Still open:
 
 ## Code this would need
 
-None of this is built. The list: a rule-set field in the template and a
-refusal on mismatch; machine-read fields for the scored sizing rule,
-execution convention and cost cell, with the report's headline, the
-regime slice and the deflation figure computed at that cell; a per-name
-spread estimate for the thin-name tiers, since the archive holds no
-quotes (estimators built from daily high, low and close exist in the
-literature, Corwin and Schultz 2012 and Abdi and Ranaldo 2017 as I recall
-them, to be checked, and they inherit the archive's volume and
-split-rounding defects); `band()` and the report reworded so flags carry no
-verdict; the minimum track record always computed; the Sharpe gates and
-the out-of-sample look counter in the pipeline and database; CAGR
-removed from the report body; and a decision on the thinning control,
-which is either built or removed from the shared method.
+Built 2026-10-05 and recorded in `QUEUE.md`: the rule-set field and the
+registered decision cell with the report computed there; the pooled score
+and its tiers; the holdout's one-year minimum, single read and look counter;
+band labels that describe and decide nothing; the minimum track record
+always reported; CAGR out of the report body; the benchmark-coverage refusal;
+break-even at every borrow rate; and the random-thinning control, which was
+built and not removed from the shared method.
+
+Not built: a per-name spread estimate for the thin-name tiers, since the
+archive holds no quotes. Estimators built from daily high, low and close
+exist in the literature (Corwin and Schultz 2012 and Abdi and Ranaldo 2017
+as I recall them, to be checked), and they inherit the archive's volume and
+split-rounding defects.
