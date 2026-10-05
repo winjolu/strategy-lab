@@ -218,3 +218,102 @@ class Sweep(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Funding(unittest.TestCase):
+    """A perpetual pays or receives funding on the position held through the
+    day. Positive means longs pay shorts."""
+
+    COLS = ("SPOT", "PERP")
+
+    def hedge(self, days=6):
+        r = frame([[0.0, 0.0]] * days, self.COLS)
+        w = frame([[1.0, -1.0]] * days, self.COLS)
+        return w, r
+
+    def rate(self, value, days=6, cols=("PERP",)):
+        idx = pd.bdate_range("2024-01-01", periods=days)
+        return pd.DataFrame({c: value for c in cols}, idx)
+
+    def test_a_short_perpetual_receives_positive_funding(self):
+        w, r = self.hedge()
+        res = bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=self.rate(1e-4))
+        self.assertAlmostEqual(res.costs["funding"].iloc[1], -1e-4)
+        self.assertAlmostEqual(res.net.iloc[1], 1e-4)
+
+    def test_a_long_perpetual_pays_it(self):
+        w, r = frame([[1.0]] * 4, ("PERP",)), frame([[0.0]] * 4, ("PERP",))
+        res = bt.run(w, r, FREE, funding=self.rate(1e-4, 4))
+        self.assertAlmostEqual(res.costs["funding"].iloc[1], 1e-4)
+        self.assertAlmostEqual(res.net.iloc[1], -1e-4)
+
+    def test_negative_funding_reverses_both(self):
+        w, r = self.hedge()
+        res = bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=self.rate(-1e-4))
+        self.assertAlmostEqual(res.net.iloc[1], -1e-4)
+
+    def test_a_column_absent_from_the_funding_frame_pays_nothing(self):
+        w, r = self.hedge()
+        res = bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=self.rate(1e-4, cols=("PERP",)))
+        self.assertAlmostEqual(res.costs["funding"].iloc[1], -1e-4)  # only the perp leg
+        both = bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=self.rate(1e-4, cols=self.COLS))
+        self.assertAlmostEqual(both.costs["funding"].iloc[1], 0.0)    # long spot pays, short perp receives
+
+    def test_funding_follows_the_lag_a_decision_does_not_earn_its_own_days_funding(self):
+        w, r = self.hedge(5)
+        f = self.rate(0.0, 5)
+        f.iloc[0] = 1e-3
+        res = bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=f)
+        self.assertEqual(res.costs["funding"].iloc[0], 0.0)
+        f2 = self.rate(0.0, 5)
+        f2.iloc[1] = 1e-3
+        res2 = bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=f2)
+        self.assertAlmostEqual(res2.costs["funding"].iloc[1], -1e-3)
+
+    def test_a_held_perpetual_with_no_rate_on_file_is_an_error_not_a_zero(self):
+        w, r = self.hedge()
+        f = self.rate(1e-4)
+        f.iloc[3] = np.nan
+        with self.assertRaises(bt.FundingMissing) as cm:
+            bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=f)
+        self.assertIn("2024-01-04", str(cm.exception))
+
+    def test_a_missing_rate_on_a_day_the_perpetual_is_not_held_is_fine(self):
+        r = frame([[0.0, 0.0]] * 6, self.COLS)
+        w = frame([[1.0, 0.0]] * 6, self.COLS)
+        f = self.rate(np.nan)
+        res = bt.run(w, r, FREE, funding=f)
+        self.assertEqual(res.costs["funding"].abs().sum(), 0.0)
+
+    def test_a_funding_frame_that_stops_early_is_an_error_while_the_book_is_held(self):
+        w, r = self.hedge(6)
+        with self.assertRaises(bt.FundingMissing):
+            bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=self.rate(1e-4, 3))
+
+    def test_an_unsorted_funding_index_is_refused(self):
+        w, r = self.hedge()
+        f = self.rate(1e-4).iloc[::-1]
+        with self.assertRaises(bt.LookaheadRisk):
+            bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=f)
+
+    def test_an_infinite_rate_is_refused(self):
+        w, r = self.hedge()
+        f = self.rate(1e-4)
+        f.iloc[2] = np.inf
+        with self.assertRaises(ValueError):
+            bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=f)
+
+    def test_a_funding_column_with_no_weights_is_ignored(self):
+        w, r = self.hedge()
+        f = self.rate(1e-4, cols=("PERP", "OTHER"))
+        bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=f)
+
+    def test_without_a_funding_frame_the_term_is_zero_and_results_are_unchanged(self):
+        w, r = self.hedge()
+        plain = bt.run(w, r, CostModel(0.0, borrow_apr=0.0))
+        self.assertEqual(plain.costs["funding"].abs().sum(), 0.0)
+
+    def test_funding_is_part_of_net_exactly_once(self):
+        w, r = self.hedge()
+        res = bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=self.rate(1e-4))
+        self.assertTrue(np.allclose(res.net, res.gross - res.costs.sum(axis=1)))

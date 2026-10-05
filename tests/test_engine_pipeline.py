@@ -170,6 +170,16 @@ slippage_sweep_pct = [0.05, 0.10, 0.25]'''
                                r.headline["active_sharpe_periodic"], places=9)
         self.assertIn("slip=0.1|borrow=1.0", " ".join(stored))
 
+    def test_the_run_record_carries_the_rule_set_cell_and_execution(self):
+        ev = self.go()
+        for r in ev.results:
+            config = self.db.run(r.run_id)["config"]
+            self.assertEqual(config["ruleset"], "v2")
+            self.assertEqual(config["execution"], "next_open")
+            self.assertEqual(config["cell"], [0.10, 1.0])
+            self.assertEqual(config["decides"], r.decides)
+            self.assertFalse(config["funding"])
+
     def test_only_the_registered_sizing_rule_and_execution_decide(self):
         ev = self.go()
         self.assertEqual({r.name: r.decides for r in ev.results},
@@ -360,3 +370,24 @@ class ScoreAndHoldout(unittest.TestCase):
         ev = self.go(execution=None)
         self.assertIsNone(ev.holdout_candidates)
         self.assertTrue(all(r.pooled is None and r.training is None for r in ev.results))
+
+
+class FundingThroughThePipeline(unittest.TestCase):
+    def test_funding_reaches_every_backtest_and_the_run_record_says_so(self):
+        d = tempfile.mkdtemp()
+        write_registration(d)
+        ret, bench = panel()
+        w = weights_for(ret)
+        funding = pd.DataFrame(0.0005, ret.index, ["S0"])
+        db = fresh_db()
+        base = dict(strategy_id="toy", weights_by_sizing=w, returns=ret, benchmark=bench,
+                    produced_by="analyst-a", effort="medium", data_manifest="synthetic",
+                    binding_constraint="settled cash", base_cost=costs.CostModel(0.25),
+                    registry_directory=d, today=TODAY)
+        plain = pipeline.evaluate(db=fresh_db(), **base)
+        paid = pipeline.evaluate(db=db, funding=funding, **base)
+        self.assertTrue(db.run(paid.results[0].run_id)["config"]["funding"])
+        for a, b in zip(plain.results, paid.results):
+            self.assertNotEqual(a.headline["absolute_cagr_pct"], b.headline["absolute_cagr_pct"])
+            self.assertTrue(all(x["active_pct_per_year"] != y["active_pct_per_year"]
+                                for x, y in zip(a.sweep, b.sweep)))

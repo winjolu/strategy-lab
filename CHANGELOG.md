@@ -34,6 +34,14 @@ Nothing yet.
 - The report prints the window actually evaluated, and break-even slippage at
   every swept borrow rate.
 
+- A funding term in the backtest (`funding=` on `backtest.run` and
+  `pipeline.evaluate`): the signed rate a position held through each day paid,
+  charged to the instruments that bear it and not the spot leg of a hedge.
+  A funding-bearing position held on a day with no rate is an error, not zero.
+- A funding-history fetcher (`lab/data/funding_history.py`) for Deribit and
+  Hyperliquid, cut at a required cutoff, with a day missing any hour returned
+  as unknown, never as a partial sum.
+
 ### Changed
 - Band labels describe a t-statistic's size and decide nothing; the label
   that read "record and drop" is now "weak". The minimum track record is
@@ -41,6 +49,9 @@ Nothing yet.
   report body in favour of Sharpe.
 
 ### Fixed
+- The run record now stores the rule set, execution convention, decision cell
+  and whether funding was charged; the first version of the change silently
+  did not.
 - A benchmark that starts late no longer shortens the evaluated sample
   silently. The pipeline refuses one with no observation on more than two
   percent of the return dates, unless the registration carries a written

@@ -124,7 +124,7 @@ def _guard_benchmark(reg, returns, benchmark):
 def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by,
              effort, data_manifest, binding_constraint, base_cost,
              spy=None, book=None, stage=1, lag=1, on_missing="raise",
-             registry_directory=None, today=None, execution=None):
+             registry_directory=None, today=None, execution=None, funding=None):
     spec = registry.require_registered(strategy_id, registry_directory, today=today)
     reg = spec["registration"]
     if not (binding_constraint or "").strip():
@@ -164,7 +164,8 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
         book = book.returns
 
     for name, weights in weights_by_sizing.items():
-        probe = backtest.run(weights, returns, base_cost.with_(borrow_apr=0.0, margin_apr=0.0), lag, on_missing)
+        probe = backtest.run(weights, returns, base_cost.with_(borrow_apr=0.0, margin_apr=0.0), lag, on_missing,
+                             funding=funding)
         models = costs.sweep(base_cost, probe.has_shorts, probe.max_long_gross > 1.0 + backtest.EXPOSURE_TOLERANCE,
                              margin_apr=base_cost.margin_apr,
                              slippage_sweep=reg.get("slippage_sweep_pct"))
@@ -182,6 +183,8 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
         run_id = db.record_run(
             strategy_id, stage,
             {"sizing": name, "parameters": reg["parameters"], "lag": lag,
+             "ruleset": version, "execution": execution, "funding": funding is not None,
+             "cell": [head.slippage_pct, head.borrow_apr], "decides": decides,
              "on_missing": on_missing, "base_cost": vars(base_cost),
              "sweep": [vars(m) for m in models]},
             produced_by, effort, data_manifest=data_manifest,
@@ -196,7 +199,7 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
 
         sweep_rows, head_bt = [], None
         for m in models:
-            bt = backtest.run(weights, returns, m, lag, on_missing)
+            bt = backtest.run(weights, returns, m, lag, on_missing, funding=funding)
             s = stats.summarise(bt.net, benchmark)
             sweep_rows.append({"slippage_pct": m.slippage_pct, "borrow_apr": m.borrow_apr,
                                "active_t": s["active_t_newey_west"], "band": s["band"],

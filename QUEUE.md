@@ -51,9 +51,16 @@ Ranked by information gained per day of work, not by claimed return.
    Kraken one year. Deribit serves hourly funding back to at least 2019 for BTC
    and ETH only, as coin-margined contracts; Hyperliquid serves many coins but
    only from 2023-05. So the test is BTC and ETH on Deribit, with Hyperliquid as
-   a cross-check where the coins overlap. Still to build: a fetcher for that
-   history, and a funding-payment term in the cost model, which today has
-   slippage, commission, borrow and margin interest only. Then the registration
+   a cross-check where the coins overlap. **Built 2026-10-05:** a fetcher for that
+   history (`lab/data/funding_history.py`, cut at a required cutoff, a day
+   missing an hour has no funding rather than a short one) and a signed funding
+   term in the backtest and pipeline (a missing rate on a held funding-bearing
+   position is an error, not a zero). Not yet run against the live endpoints:
+   nothing is fetched until a registration names its cutoff. **Open for the
+   registration:** the stats and score modules annualise with 252 trading
+   days, and crypto trades 365 daily rows a year, which understates a daily
+   Sharpe by about a fifth; the annualisation factor has to become a stated
+   input before any crypto figure is read. Then the registration
    under rule set v2, which is the part that needs a stronger model: what
    convexity and venue-specific rules mean for the hypothesis, and what the
    prediction and kill criteria are. Still to check with Kalshi and the broker,

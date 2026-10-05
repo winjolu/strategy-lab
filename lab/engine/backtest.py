@@ -47,6 +47,10 @@ class LookaheadRisk(ValueError):
     """The arguments would let a decision earn its own day's return."""
 
 
+class FundingMissing(ValueError):
+    """A position that pays or receives funding was held on a day with none on file."""
+
+
 class EquityExhausted(ValueError):
     """The book lost all of its equity; nothing after that day is meaningful."""
 
@@ -82,7 +86,35 @@ def _clean_weights(weights):
     return weights
 
 
-def run(weights, returns, cost, lag=1, on_missing="raise"):
+def _funding_cost(funding, held, index, columns):
+    """What the day's funding cost the book, signed: positive is a payment.
+
+    `funding` is dates by names, the rate a position held through that day
+    paid, as a fraction of notional, positive meaning longs pay shorts. A
+    column present in it is a funding-bearing instrument, such as a
+    perpetual; a column absent from it pays nothing, such as the spot leg of
+    a hedge. A funding-bearing name held on a day with no rate on file is an
+    error, not zero: zero would flatter a long and understate what a short
+    receives, and the shortfall would not show.
+    """
+    if funding is None:
+        return pd.Series(0.0, index)
+    if not funding.index.is_monotonic_increasing or funding.index.has_duplicates:
+        raise LookaheadRisk("funding index must be sorted with no duplicate dates")
+    if not np.isfinite(funding.to_numpy(float)[~np.isnan(funding.to_numpy(float))]).all():
+        raise ValueError("funding contains inf")
+    bearing = columns.isin(funding.columns)
+    rate = funding.reindex(index=index, columns=columns)
+    missing = rate.isna() & (held != 0) & bearing
+    if missing.any().any():
+        first = missing.any(axis=1).idxmax()
+        raise FundingMissing(
+            f"{int(missing.sum().sum())} funding-bearing position-days have no funding rate, "
+            f"first on {first:%Y-%m-%d}; a missing rate is not a zero rate")
+    return (held * rate.fillna(0.0)).sum(axis=1)
+
+
+def run(weights, returns, cost, lag=1, on_missing="raise", funding=None):
     if lag < 1:
         raise LookaheadRisk("lag must be at least 1: a decision cannot earn its own day")
     if on_missing not in ("raise", "zero"):
@@ -141,11 +173,14 @@ def run(weights, returns, cost, lag=1, on_missing="raise"):
     if debit.max() > EXPOSURE_TOLERANCE and cost.margin_apr is None:
         raise CostNotStated("the strategy uses leverage; margin_apr must be stated")
 
+    funding_cost = _funding_cost(funding, held, returns.index, weights.columns)
+
     parts = pd.DataFrame({
         "slippage": turnover * cost.slippage_pct / 100.0,
         "commission": turnover * cost.commission_bps / 1e4,
         "borrow": short_gross * (cost.borrow_apr or 0.0) / 100.0 / DAY_COUNT_BASIS * days,
         "margin": debit * (cost.margin_apr or 0.0) / 100.0 / DAY_COUNT_BASIS * days,
+        "funding": funding_cost,
     })
     net = gross - parts.sum(axis=1)
     if (net <= -1.0).any():
