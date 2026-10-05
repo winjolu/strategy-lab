@@ -23,9 +23,9 @@ TRADING_DAYS = 252
 MIN_OBSERVATIONS = 30
 
 #: Words the methodology fixes. Absolute t, so a strongly negative edge is
-#: named strong rather than dropped as weak.
+#: named strong rather than weak.
 BANDS = ((3.0, "strong"), (2.0, "promising"), (1.5, "underpowered"))
-DROP = "below 1.5: record and drop"
+BELOW = "weak"  # a size, not an instruction: what to do with it is a gate's job, not this label's
 
 
 class NoBenchmark(ValueError):
@@ -39,7 +39,7 @@ def band(t):
     for floor, word in BANDS:
         if abs(t) >= floor:
             return word
-    return DROP
+    return BELOW
 
 
 def _quantiles(x):
@@ -125,8 +125,9 @@ def summarise(net, benchmark, spy=None, book=None, trials=None, sharpe_variance=
         "corr_to_book": _corr(r, book) if book is not None else None,
     }
 
-    if out["band"] == "underpowered":
-        out["min_track_record_days"] = perf.minimum_track_record_length(active)
+    # Always computed: a diagnostic that appears only when a gate lands in a
+    # certain place is a gate by another name.
+    out["min_track_record_days"] = perf.minimum_track_record_length(active)
     out["deflated"] = _deflate(active, trials, sharpe_variance)
     out["deflated_lab"] = _deflate(active, lab_trials, lab_sharpe_variance)
     return out

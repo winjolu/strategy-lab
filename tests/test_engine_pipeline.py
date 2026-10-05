@@ -203,3 +203,21 @@ slippage_sweep_pct = [0.05, 0.10, 0.25]'''
         self.assertEqual({r.cell for r in ev.results}, {(0.25, 8.0)})
         self.assertIn("Headline cost cell: slippage 0.25% per side, borrow 8.0%",
                       report.render(ev))
+
+
+class ReportFlags(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        write_registration(self.dir)
+        ret, bench = panel()
+        self.text = report.render(pipeline.evaluate(
+            "toy", weights_for(ret), ret, bench, fresh_db(), produced_by="analyst-a",
+            effort="medium", data_manifest="synthetic", binding_constraint="settled cash",
+            base_cost=costs.CostModel(0.25), registry_directory=self.dir, today=TODAY))
+
+    def test_the_minimum_track_record_is_always_in_the_report(self):
+        self.assertEqual(self.text.count("Minimum track record for the active Sharpe"), 2)
+
+    def test_the_report_body_carries_no_cagr_and_no_verdict_wording(self):
+        self.assertNotIn("CAGR", self.text)
+        self.assertNotIn("record and drop", self.text)

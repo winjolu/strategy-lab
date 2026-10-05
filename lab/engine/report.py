@@ -97,8 +97,7 @@ def _sizing_block(r, benchmark):
         f"borrow: t=0 at {_fmt_break_even(be[0.0])}; t=2 at {_fmt_break_even(be[2.0])}.",
         f"- Active return: {_f(h['active_mean_pct_per_year'])}% a year (active); "
         f"active Sharpe {_f(h['active_sharpe_annual'])} annualised (active).",
-        f"- Absolute: CAGR {_f(h['absolute_cagr_pct'])}% (abs), Sharpe "
-        f"{_f(h['absolute_sharpe_annual'])} annualised (abs).",
+        f"- Absolute: Sharpe {_f(h['absolute_sharpe_annual'])} annualised (abs).",
         f"- Risk: max drawdown {_f(h['absolute_max_drawdown_pct'])}% (abs), MAR {_f(h['absolute_mar'])}. "
         f"Longest time under water {h['time_under_water_days_longest']:,} days; "
         f"{h['time_under_water_share'] * 100:.0f}% of days under water; "
@@ -111,9 +110,8 @@ def _sizing_block(r, benchmark):
     ]
     if r.gross_used > r.kelly_quarter > 0:
         lines.append("  **Gross exposure exceeds quarter-Kelly.**")
-    if "min_track_record_days" in h:
-        lines.append(f"- Underpowered, so: minimum track record for the active Sharpe to be "
-                     f"distinguishable from zero at 95% is {_days_to_years(h['min_track_record_days'])}.")
+    lines.append(f"- Minimum track record for the active Sharpe to be distinguishable from "
+                 f"zero at 95%: {_days_to_years(h['min_track_record_days'])}.")
     for label, key in (("family", "deflated"), ("lab-wide", "deflated_lab")):
         d = h[key]
         if d:
@@ -142,12 +140,12 @@ def _sizing_block(r, benchmark):
         lines.append(f"- **{r.zeroed_position_days:,} position-days had no return and were set to zero** "
                      "by explicit choice.")
     lines += ["", "Cost sweep, t on active return (Newey-West):", "",
-              "| slippage / side | borrow APR | active t | band | active %/yr | abs CAGR % |",
+              "| slippage / side | borrow APR | active t | band | active %/yr | abs Sharpe |",
               "|---|---|---|---|---|---|"]
     for row in r.sweep:
         lines.append(f"| {row['slippage_pct']}% | {_f(row['borrow_apr'], '.0f') if row['borrow_apr'] is not None else '-'} "
                      f"| {_f(row['active_t'])} | {row['band']} | {_f(row['active_pct_per_year'])} "
-                     f"| {_f(row['absolute_cagr_pct'])} |")
+                     f"| {_f(row['absolute_sharpe_annual'])} |")
     lines.append("")
     return "\n".join(lines)
 

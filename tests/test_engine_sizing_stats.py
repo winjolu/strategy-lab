@@ -96,7 +96,7 @@ class Bands(unittest.TestCase):
     def test_the_boundaries_use_the_methodologys_words(self):
         cases = [(3.0, "strong"), (2.999, "promising"), (2.0, "promising"),
                  (1.999, "underpowered"), (1.5, "underpowered"),
-                 (1.499, stats.DROP), (0.0, stats.DROP), (-3.5, "strong")]
+                 (1.499, stats.BELOW), (0.0, stats.BELOW), (-3.5, "strong")]
         for t, word in cases:
             self.assertEqual(stats.band(t), word, t)
 
@@ -132,17 +132,21 @@ class Summarise(unittest.TestCase):
         self.assertEqual(out["band"], "strong")
         self.assertGreater(out["active_mean_pct_per_year"], 0)
 
-    def test_underpowered_results_carry_a_minimum_track_record(self):
+    def test_the_minimum_track_record_is_computed_in_every_band(self):
         rng = np.random.default_rng(5)
         bench = series(1)
-        # pick an edge that lands in 1.5 <= |t| < 2
-        for edge in np.linspace(0.00005, 0.0006, 60):
+        seen = set()
+        for edge in np.linspace(-0.0004, 0.002, 40):
             net = bench + edge + rng.normal(0, 0.004, len(bench))
             out = stats.summarise(net, bench)
-            if out["band"] == "underpowered":
-                self.assertIn("min_track_record_days", out)
-                return
-        self.fail("no edge landed in the underpowered band")
+            seen.add(out["band"])
+            self.assertIn("min_track_record_days", out, out["band"])
+        self.assertGreaterEqual(len(seen), 3, seen)
+
+    def test_no_band_label_carries_a_verdict(self):
+        for word in [w for _, w in stats.BANDS] + [stats.BELOW]:
+            for banned in ("drop", "kill", "advance", "pass", "fail"):
+                self.assertNotIn(banned, word.lower())
 
     def test_too_few_overlapping_days_are_refused(self):
         with self.assertRaises(ValueError):

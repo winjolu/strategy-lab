@@ -87,7 +87,7 @@ priced by the multiplier in force on the day.
 
 **Significance and deflation.** The t-statistic is on active return over a
 required, size-appropriate benchmark, with Newey-West errors. Results fall in
-bands (|t| of 3 or more strong, 2 promising, 1.5 underpowered, below that drop),
+bands (|t| of 3 or more strong, 2 promising, 1.5 underpowered, below that weak; the bands are labels and decide nothing),
 and the Sharpe ratio is deflated by the number of trials, per strategy family and
 across the whole lab, with the dispersion measured from the results database.
 Fewer than two trials reports "not deflated" instead of assuming a variance.

@@ -145,7 +145,7 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
             sweep_rows.append({"slippage_pct": m.slippage_pct, "borrow_apr": m.borrow_apr,
                                "active_t": s["active_t_newey_west"], "band": s["band"],
                                "active_pct_per_year": s["active_mean_pct_per_year"],
-                               "absolute_cagr_pct": s["absolute_cagr_pct"]})
+                               "absolute_sharpe_annual": s["absolute_sharpe_annual"]})
             tag = f"slip={m.slippage_pct}|borrow={m.borrow_apr}"
             db.record_figure(run_id, f"active_t|{tag}", s["active_t_newey_west"])
             if m is head:
