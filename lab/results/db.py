@@ -69,6 +69,15 @@ CREATE TABLE IF NOT EXISTS figures (
     created_at  TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS holdout_looks (
+    look_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_id   TEXT NOT NULL,
+    holdout_start TEXT NOT NULL,
+    run_id        TEXT NOT NULL REFERENCES runs(run_id),
+    created_at    TEXT NOT NULL,
+    UNIQUE (strategy_id, holdout_start)
+);
+
 CREATE INDEX IF NOT EXISTS idx_trials_family ON trials(family);
 CREATE INDEX IF NOT EXISTS idx_figures_run ON figures(run_id);
 """
@@ -76,6 +85,10 @@ CREATE INDEX IF NOT EXISTS idx_figures_run ON figures(run_id);
 
 class ReadOnlyViolation(RuntimeError):
     """A statement that is not a read reached a read-only handle."""
+
+
+class HoldoutAlreadyRead(RuntimeError):
+    """This strategy has already read this holdout. Each reads it once."""
 
 
 class UnknownRun(KeyError):
@@ -362,6 +375,55 @@ class ResultsDB:
                     f"{self.backend.placeholder}",
                     (family,),
                 )
+            return cur.fetchone()["n"]
+        finally:
+            conn.close()
+
+    def record_holdout_look(self, strategy_id, holdout_start, run_id):
+        """Record that a strategy read a holdout, or raise if it already did.
+
+        The unique key is the strategy and the holdout together, so a variant
+        under its own id gets its own look, counted separately, while a rerun
+        of the same strategy cannot take a second one. Written before the
+        score is computed, so a crash does not hand back the look.
+        """
+        conn = self.backend.connect()
+        try:
+            if not self._run_exists(conn, run_id):
+                raise UnknownRun(f"no run {run_id!r}; call record_run first")
+            p = self.backend.placeholder
+            if conn.execute(
+                f"SELECT 1 FROM holdout_looks WHERE strategy_id = {p} AND holdout_start = {p}",
+                (strategy_id, str(holdout_start)),
+            ).fetchone():
+                raise HoldoutAlreadyRead(
+                    f"{strategy_id!r} has already read the holdout from {holdout_start}")
+            conn.execute(
+                f"INSERT INTO holdout_looks (strategy_id, holdout_start, run_id, created_at) "
+                f"VALUES ({p}, {p}, {p}, {p})",
+                (strategy_id, str(holdout_start), run_id, _now()),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def has_read_holdout(self, strategy_id, holdout_start):
+        conn = self.backend.connect_ro()
+        try:
+            p = self.backend.placeholder
+            return conn.execute(
+                f"SELECT 1 FROM holdout_looks WHERE strategy_id = {p} AND holdout_start = {p}",
+                (strategy_id, str(holdout_start))).fetchone() is not None
+        finally:
+            conn.close()
+
+    def holdout_look_count(self, holdout_start):
+        """How many candidates have read this holdout, variants included."""
+        conn = self.backend.connect_ro()
+        try:
+            cur = conn.execute(
+                f"SELECT COUNT(*) AS n FROM holdout_looks WHERE holdout_start = "
+                f"{self.backend.placeholder}", (str(holdout_start),))
             return cur.fetchone()["n"]
         finally:
             conn.close()

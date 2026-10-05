@@ -18,8 +18,9 @@ import numpy as np
 import pandas as pd
 
 from lab import config
-from lab.engine import backtest, costs, registry, sizing, stats
+from lab.engine import backtest, costs, registry, score, sizing, stats
 from lab.engine.book import Book
+from lab.results import db as results_db
 
 HOLDOUT_STAGE = 3
 
@@ -56,6 +57,8 @@ class SizingResult:
     has_shorts: bool
     cell: tuple = None          # (slippage_pct, borrow_apr) the figures above are read at
     decides: bool = None        # True: the verdict reads this one; None: rule set v1
+    training: dict = None       # rule set v2: training-window Sharpe, before the holdout opens
+    pooled: dict = None         # rule set v2, Stage 3: the score, training and holdout pooled
 
 
 @dataclass
@@ -68,6 +71,7 @@ class Evaluation:
     ruleset: str = "v1"
     execution: str = None
     decision_cell: tuple = None
+    holdout_candidates: int = None   # how many candidates have read this holdout, this one included
     book_note: str = None
     results: list = field(default_factory=list)
 
@@ -143,6 +147,16 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
     version = registry.ruleset(spec)
     if version == "v2" and not (execution or "").strip():
         raise ValueError("a rule set v2 evaluation states its execution convention")
+    if version == "v2" and stage >= HOLDOUT_STAGE and execution != reg["decision_execution"]:
+        raise RegistrationMismatch(
+            f"the holdout is read once, under the registered execution convention "
+            f"{reg['decision_execution']!r}; {execution!r} would be a second look")
+    if version == "v2" and stage >= HOLDOUT_STAGE:
+        score.require_holdout_days(returns.index.intersection(benchmark.dropna().index),
+                                   reg["holdout_start"])
+        if db.has_read_holdout(strategy_id, reg["holdout_start"]):
+            raise results_db.HoldoutAlreadyRead(
+                f"{strategy_id!r} has already read the holdout from {reg['holdout_start']}")
     out = Evaluation(strategy_id, stage, spec, binding_constraint, reg["benchmark"],
                      ruleset=version, execution=execution)
     if isinstance(book, Book):
@@ -173,6 +187,12 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
             produced_by, effort, data_manifest=data_manifest,
         )
         db.record_trial(run_id, family, reason=f"stage {stage} evaluation, sizing {name}")
+        if version == "v2" and stage >= HOLDOUT_STAGE:
+            probe_net = probe.net
+            score.require_holdout_ready(probe_net, benchmark, reg["holdout_start"])
+            if out.holdout_candidates is None:
+                db.record_holdout_look(strategy_id, reg["holdout_start"], run_id)
+                out.holdout_candidates = db.holdout_look_count(reg["holdout_start"])
 
         sweep_rows, head_bt = [], None
         for m in models:
@@ -200,11 +220,20 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
         except ValueError as exc:
             regime = str(exc)
 
+        training = pooled = None
+        if version == "v2":
+            training = score.training_score(head_bt.net, benchmark, reg["holdout_start"])
+            db.record_figure(run_id, "training_active_sharpe", training["sharpe"], "annualised")
+            if stage >= HOLDOUT_STAGE:
+                pooled = score.pooled_score(head_bt.net, benchmark, reg["holdout_start"])
+                db.record_figure(run_id, "pooled_active_sharpe", pooled["sharpe"], "annualised")
+
         gross_used = float(head_bt.held.abs().sum(axis=1).max())
         out.results.append(SizingResult(
             name, run_id, headline, regime, sweep_rows, head_bt.annual_turnover,
             gross_used, sizing.kelly_leverage(head_bt.net), head_bt.zeroed_position_days,
             head_bt.has_shorts, (head.slippage_pct, head.borrow_apr), decides,
+            training, pooled,
         ))
     return out
 

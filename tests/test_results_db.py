@@ -224,3 +224,51 @@ class TestFamilyFigures(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class HoldoutLooks(unittest.TestCase):
+    def setUp(self):
+        from tests.engine_fixtures import fresh_db
+        self.db = fresh_db()
+        self.run = lambda sid: self.db.record_run(sid, 3, {}, "analyst-a", "medium", data_manifest="m")
+
+    def test_a_strategy_reads_a_holdout_once(self):
+        self.db.record_holdout_look("s1", "2025-10-01", self.run("s1"))
+        with self.assertRaises(results_db.HoldoutAlreadyRead):
+            self.db.record_holdout_look("s1", "2025-10-01", self.run("s1"))
+
+    def test_a_variant_under_its_own_id_gets_its_own_counted_look(self):
+        self.db.record_holdout_look("s1", "2025-10-01", self.run("s1"))
+        self.db.record_holdout_look("s1-variant", "2025-10-01", self.run("s1-variant"))
+        self.assertEqual(self.db.holdout_look_count("2025-10-01"), 2)
+
+    def test_a_new_holdout_boundary_is_a_new_holdout(self):
+        self.db.record_holdout_look("s1", "2025-10-01", self.run("s1"))
+        self.db.record_holdout_look("s1", "2026-10-01", self.run("s1"))
+        self.assertEqual(self.db.holdout_look_count("2025-10-01"), 1)
+        self.assertEqual(self.db.holdout_look_count("2026-10-01"), 1)
+
+    def test_a_look_against_a_run_that_does_not_exist_is_refused(self):
+        with self.assertRaises(results_db.UnknownRun):
+            self.db.record_holdout_look("s1", "2025-10-01", "no-such-run")
+
+    def test_a_refused_second_look_does_not_change_the_count(self):
+        self.db.record_holdout_look("s1", "2025-10-01", self.run("s1"))
+        try:
+            self.db.record_holdout_look("s1", "2025-10-01", self.run("s1"))
+        except results_db.HoldoutAlreadyRead:
+            pass
+        self.assertEqual(self.db.holdout_look_count("2025-10-01"), 1)
+
+    def test_the_database_itself_refuses_a_duplicate_look_whatever_the_application_does(self):
+        import sqlite3
+        run = self.run("s1")
+        self.db.record_holdout_look("s1", "2025-10-01", run)
+        conn = self.db.backend.connect()
+        try:
+            with self.assertRaises(sqlite3.IntegrityError):
+                conn.execute(
+                    "INSERT INTO holdout_looks (strategy_id, holdout_start, run_id, created_at) "
+                    "VALUES ('s1', '2025-10-01', ?, 'now')", (run,))
+        finally:
+            conn.close()

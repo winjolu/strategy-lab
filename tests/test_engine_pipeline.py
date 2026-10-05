@@ -4,6 +4,8 @@ import unittest
 import pandas as pd
 
 from lab.engine import costs, pipeline, report, sizing
+from lab.engine import score as score_mod
+from lab.results import db as results_db
 from tests.engine_fixtures import TODAY, fresh_db, panel, write_registration
 
 import numpy as np
@@ -283,3 +285,78 @@ class BreakEvenPerBorrowRate(unittest.TestCase):
             base_cost=costs.CostModel(0.25), registry_directory=d, today=TODAY))
         self.assertEqual(text.count("Break-even slippage, at 1% borrow"), 2)
         self.assertEqual(text.count("Break-even slippage, at 8% borrow"), 2)
+
+
+class ScoreAndHoldout(unittest.TestCase):
+    EXTRA = DecisionCell.EXTRA
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.ret, self.bench = panel()
+        self.w = weights_for(self.ret)
+        self.db = fresh_db()
+        self.holdout = str(self.ret.index[400].date())       # 300 days of holdout
+        write_registration(self.dir, extra=self.EXTRA, holdout=self.holdout)
+
+    def go(self, ret=None, **overrides):
+        ret = self.ret if ret is None else ret
+        args = dict(strategy_id="toy", weights_by_sizing=self.w, returns=ret,
+                    benchmark=self.bench.loc[ret.index], db=self.db, produced_by="analyst-a",
+                    effort="medium", data_manifest="synthetic", binding_constraint="settled cash",
+                    base_cost=costs.CostModel(0.25, borrow_apr=8.0), registry_directory=self.dir,
+                    today=TODAY, execution="next_open", stage=3)
+        args.update(overrides)
+        return pipeline.evaluate(**args)
+
+    def test_stage_one_reports_the_provisional_training_score_and_no_pooled_one(self):
+        ret = self.ret[self.ret.index < self.holdout]
+        ev = self.go(ret=ret, stage=1, weights_by_sizing={k: v.loc[ret.index] for k, v in self.w.items()})
+        for r in ev.results:
+            self.assertIsNotNone(r.training)
+            self.assertIsNone(r.pooled)
+            self.assertLess(r.training["end"], pd.Timestamp(self.holdout))
+        self.assertIn("The holdout has not been read", report.render(ev))
+        self.assertIsNone(ev.holdout_candidates)
+
+    def test_stage_three_reports_the_pooled_score_and_counts_the_look(self):
+        ev = self.go()
+        self.assertEqual(ev.holdout_candidates, 1)
+        for r in ev.results:
+            self.assertIsNotNone(r.pooled)
+            stored = {f["name"]: f["value"] for f in self.db.figures_for_run(r.run_id)}
+            self.assertAlmostEqual(stored["pooled_active_sharpe"], r.pooled["sharpe"], places=9)
+        text = report.render(ev)
+        self.assertIn("**Score**", text)
+        self.assertIn("1 candidate has now read it", text)
+
+    def test_a_second_read_of_the_holdout_by_the_same_strategy_is_refused(self):
+        self.go()
+        with self.assertRaises(results_db.HoldoutAlreadyRead):
+            self.go()
+
+    def test_a_refused_second_read_leaves_the_look_count_and_the_trial_count_unchanged(self):
+        self.go()
+        trials = self.db.trial_count()
+        with self.assertRaises(results_db.HoldoutAlreadyRead):
+            self.go()
+        self.assertEqual(self.db.holdout_look_count(self.holdout), 1)
+        self.assertEqual(self.db.trial_count(), trials)
+
+    def test_a_holdout_under_a_year_is_refused_and_takes_no_look(self):
+        write_registration(self.dir, extra=self.EXTRA, holdout=str(self.ret.index[-100].date()))
+        with self.assertRaises(score_mod.HoldoutTooShort):
+            self.go()
+        self.assertEqual(self.db.holdout_look_count(str(self.ret.index[-100].date())), 0)
+        self.assertEqual(self.db.trial_count(), 0)
+
+    def test_the_holdout_is_read_only_under_the_registered_execution_convention(self):
+        with self.assertRaises(pipeline.RegistrationMismatch):
+            self.go(execution="same_close")
+        self.assertEqual(self.db.holdout_look_count(self.holdout), 0)
+        self.assertEqual(self.db.trial_count(), 0)
+
+    def test_a_first_rule_set_stage_three_run_is_unchanged(self):
+        write_registration(self.dir, holdout=self.holdout)
+        ev = self.go(execution=None)
+        self.assertIsNone(ev.holdout_candidates)
+        self.assertTrue(all(r.pooled is None and r.training is None for r in ev.results))

@@ -85,7 +85,26 @@ def _break_even_lines(sweep, borrows):
     return lines
 
 
-def _sizing_block(r, benchmark):
+def _score_lines(r, holdout_candidates):
+    out = []
+    if r.pooled:
+        p = r.pooled
+        out.append(
+            f"- **Score** (active Sharpe, net, training and holdout pooled, "
+            f"{p['start']:%Y-%m-%d} to {p['end']:%Y-%m-%d}, {p['n_days']:,} days of which "
+            f"{p['n_holdout_days']:,} are holdout): {_f(p['sharpe'])} annualised, "
+            f"tier **{p['tier']}**. The holdout is read once; {holdout_candidates} "
+            f"candidate{'s have' if holdout_candidates != 1 else ' has'} now read it.")
+    elif r.training:
+        t = r.training
+        out.append(
+            f"- Training window ({t['start']:%Y-%m-%d} to {t['end']:%Y-%m-%d}, {t['n_days']:,} days): "
+            f"active Sharpe {_f(t['sharpe'])} annualised (net), provisional tier {t['tier']}. "
+            "The holdout has not been read, so this is half of the score.")
+    return out
+
+
+def _sizing_block(r, benchmark, holdout_candidates=None):
     h = r.headline
     slippage, cell_borrow = r.cell if r.cell else (HEADLINE_SLIPPAGE, HEADLINE_BORROW if r.has_shorts else None)
     borrow_used = cell_borrow if r.has_shorts else None
@@ -109,6 +128,7 @@ def _sizing_block(r, benchmark):
         + (" (negative: the edge is below the benchmark)" if h['active_t_newey_west'] < 0 else "") + ".",
         f"- Evaluated window: {h['start']:%Y-%m-%d} to {h['end']:%Y-%m-%d}, {h['n_days']:,} days "
         f"(the days the strategy and the {benchmark} benchmark share).",
+        *_score_lines(r, holdout_candidates),
         *_break_even_lines(r.sweep, borrows),
         f"- Active return: {_f(h['active_mean_pct_per_year'])}% a year (active); "
         f"active Sharpe {_f(h['active_sharpe_annual'])} annualised (active).",
@@ -181,7 +201,7 @@ def render(ev):
                  "data exists locally; borrow is charged at 1% and 8%.", ""]
     if ev.book_note:
         head += [ev.book_note, ""]
-    body = [_sizing_block(r, ev.benchmark_name) for r in ev.results]
+    body = [_sizing_block(r, ev.benchmark_name, ev.holdout_candidates) for r in ev.results]
     tail = ["---", "Figures above are recorded against the run ids shown. Not a recommendation; "
             "not financial advice. A verdict needs the run id recorded in the registry."]
     return "\n".join(head + body + tail) + "\n"
