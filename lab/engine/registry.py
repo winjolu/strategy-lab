@@ -21,6 +21,7 @@ PROVENANCE = ("literature", "own_observation", "data_derived")
 MAX_PARAMETERS = 5
 MIN_SIZING_RULES = 2
 STAGES = (0, 1, 2, 3, 4, 5)
+RULESETS = ("v1", "v2")
 
 _FENCE = re.compile(r"\A\+\+\+\n(.*?)\n\+\+\+\n", re.DOTALL)
 _ISO = re.compile(r"\A\d{4}-\d{2}-\d{2}\Z")
@@ -109,11 +110,47 @@ def problems(spec, today=None):
     if not isinstance(sizing, list) or len(set(sizing)) < MIN_SIZING_RULES:
         out.append(f"at least {MIN_SIZING_RULES} distinct sizing_rules are required")
 
+    out += _ruleset_problems(reg)
+
     if dates.get("registered_on") and dates["registered_on"] > today:
         out.append("registered_on is in the future")
     if spec.get("provenance") == "data_derived" and not _filled(reg.get("data_derived_burden")):
         out.append("a data_derived idea carries a stricter burden: "
                    "data_derived_burden must say why this is not a fit to the sample")
+    return out
+
+
+def ruleset(spec):
+    """The rule set a registration was made under; absent means the first."""
+    return spec.get("registration", {}).get("ruleset", "v1")
+
+
+def _ruleset_problems(reg):
+    """Under rule set v2 the verdict's cell is registered fields, not prose.
+
+    The kill criteria are prose, read by hand. A report that computes its
+    headline at one sizing rule, execution convention and cost cell while
+    the verdict is read at another shows the wrong numbers beside the
+    verdict, so v2 names all of them where the code can read them.
+    """
+    version = reg.get("ruleset", "v1")
+    if version not in RULESETS:
+        return [f"registration.ruleset must be one of {RULESETS}"]
+    if version == "v1":
+        return []
+    out = []
+    sizing = reg.get("sizing_rules")
+    if reg.get("decision_sizing") not in (sizing if isinstance(sizing, list) else []):
+        out.append("registration.decision_sizing must be one of sizing_rules")
+    if not _filled(reg.get("decision_execution")):
+        out.append("registration.decision_execution is missing or still a placeholder")
+    slip = reg.get("decision_slippage_pct")
+    if isinstance(slip, bool) or not isinstance(slip, (int, float)) or slip <= 0:
+        out.append("registration.decision_slippage_pct must be a positive number")
+    borrow = reg.get("decision_borrow_apr")
+    if borrow is not None and (isinstance(borrow, bool)
+                               or not isinstance(borrow, (int, float)) or borrow < 0):
+        out.append("registration.decision_borrow_apr must be a non-negative number when given")
     return out
 
 

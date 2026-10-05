@@ -23,6 +23,11 @@ parameters = {}                   # name = value. Five or fewer in total
 sizing_rules = []                 # at least two; each is reported
 holdout_start = "TODO"            # YYYY-MM-DD; data on or after this stays unseen until Stage 3
 kill_criteria = "TODO"            # what result ends this, decided in advance
+ruleset = "v2"                    # the rule set this is registered under; see METHODOLOGY.md
+decision_sizing = "TODO"          # the one sizing rule the verdict is read on; one of sizing_rules
+decision_execution = "TODO"       # the one execution convention the verdict is read on, e.g. next_open
+decision_slippage_pct = 0         # slippage per side, in percent, at the verdict's cost cell; must be positive
+decision_borrow_apr = 0           # borrow, percent a year, at that cell; required when the book shorts
 current_regime_rule = "TODO"      # the stated rule that defines "current regime"
 current_regime_start = "TODO"     # YYYY-MM-DD, the date that rule produces
 data_derived_burden = ""          # required when provenance is data_derived: why this is not a fit

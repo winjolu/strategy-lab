@@ -123,3 +123,83 @@ class Evaluate(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DecisionCell(unittest.TestCase):
+    """Under rule set v2 the verdict's cell is registered, and everything
+    the report shows beside the verdict is computed at that cell."""
+
+    EXTRA = '''ruleset = "v2"
+decision_sizing = "equal_weight"
+decision_execution = "next_open"
+decision_slippage_pct = 0.10
+decision_borrow_apr = 1.0
+slippage_sweep_pct = [0.05, 0.10, 0.25]'''
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        write_registration(self.dir, extra=self.EXTRA)
+        self.ret, self.bench = panel()
+        self.w = weights_for(self.ret)
+        self.db = fresh_db()
+
+    def go(self, **overrides):
+        args = dict(strategy_id="toy", weights_by_sizing=self.w, returns=self.ret,
+                    benchmark=self.bench, db=self.db, produced_by="analyst-a", effort="medium",
+                    data_manifest="synthetic", binding_constraint="settled cash",
+                    base_cost=costs.CostModel(0.25, borrow_apr=8.0), registry_directory=self.dir,
+                    today=TODAY, execution="next_open")
+        args.update(overrides)
+        return pipeline.evaluate(**args)
+
+    def test_the_headline_is_read_at_the_registered_cell_not_the_lab_default(self):
+        ev = self.go()
+        for r in ev.results:
+            self.assertEqual(r.cell, (0.10, 1.0))
+            row = next(x for x in r.sweep if (x["slippage_pct"], x["borrow_apr"]) == (0.10, 1.0))
+            self.assertAlmostEqual(r.headline["active_t_newey_west"], row["active_t"], places=9)
+
+    def test_the_regime_slice_and_stored_sharpe_use_the_same_cell(self):
+        ev = self.go()
+        r = ev.results[0]
+        stored = {f["name"]: f["value"] for f in self.db.figures_for_run(r.run_id)}
+        self.assertAlmostEqual(stored["active_t"], r.headline["active_t_newey_west"], places=9)
+        self.assertAlmostEqual(stored["active_sharpe_periodic"],
+                               r.headline["active_sharpe_periodic"], places=9)
+        self.assertIn("slip=0.1|borrow=1.0", " ".join(stored))
+
+    def test_only_the_registered_sizing_rule_and_execution_decide(self):
+        ev = self.go()
+        self.assertEqual({r.name: r.decides for r in ev.results},
+                         {"equal_weight": True, "inverse_vol": False})
+        other = self.go(execution="same_close")
+        self.assertEqual({r.decides for r in other.results}, {False})
+
+    def test_a_cell_the_sweep_did_not_compute_is_refused_not_approximated(self):
+        write_registration(self.dir, extra=self.EXTRA.replace(
+            "decision_slippage_pct = 0.10", "decision_slippage_pct = 0.07"))
+        with self.assertRaises(LookupError):
+            self.go()
+
+    def test_v2_without_an_execution_convention_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.go(execution=None)
+
+    def test_a_shorting_book_with_no_registered_borrow_is_refused(self):
+        write_registration(self.dir, extra=self.EXTRA.replace("decision_borrow_apr = 1.0\n", ""))
+        with self.assertRaises(costs.CostNotStated):
+            self.go()
+
+    def test_the_report_says_which_run_the_verdict_reads(self):
+        text = report.render(self.go())
+        self.assertIn("The verdict reads this one", text)
+        self.assertIn("A flag, not the verdict", text)
+        self.assertIn("Decision cost cell: slippage 0.1% per side, borrow 1.0% a year", text)
+
+    def test_a_first_rule_set_registration_is_unchanged(self):
+        write_registration(self.dir)
+        ev = self.go(execution=None)
+        self.assertEqual(ev.ruleset, "v1")
+        self.assertEqual({r.cell for r in ev.results}, {(0.25, 8.0)})
+        self.assertIn("Headline cost cell: slippage 0.25% per side, borrow 8.0%",
+                      report.render(ev))

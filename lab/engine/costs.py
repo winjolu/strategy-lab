@@ -21,6 +21,7 @@ A rate that applies to the positions taken has to be stated. Borrow left
 at `None` on a strategy that shorts raises rather than defaulting to zero,
 because a silent zero is the one assumption that always flatters.
 """
+import math
 from dataclasses import dataclass, replace
 from typing import Optional
 
@@ -85,3 +86,23 @@ def headline(models):
         if m.slippage_pct == HEADLINE_SLIPPAGE and m.borrow_apr in (HEADLINE_BORROW, None):
             return m
     raise LookupError("the sweep has no headline cell")
+
+
+def cell(models, slippage_pct, borrow_apr=None):
+    """The swept model at exactly this slippage and borrow, or raise.
+
+    A registration that names the cell its verdict is read at has to name
+    one the sweep actually computed. Falling back to the nearest cell would
+    quietly read the verdict somewhere other than where it was registered,
+    which is the failure this exists to prevent.
+    """
+    for m in models:
+        if math.isclose(m.slippage_pct, slippage_pct) and (
+                m.borrow_apr is None if borrow_apr is None
+                else m.borrow_apr is not None and math.isclose(m.borrow_apr, borrow_apr)):
+            return m
+    have = sorted({(m.slippage_pct, m.borrow_apr) for m in models}, key=str)
+    raise LookupError(
+        f"the sweep has no cell at slippage {slippage_pct}% and borrow {borrow_apr}; "
+        f"it computed {have}"
+    )

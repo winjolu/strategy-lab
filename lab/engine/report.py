@@ -74,12 +74,21 @@ def _fmt_break_even(v):
 
 def _sizing_block(r, benchmark):
     h = r.headline
-    borrow_used = HEADLINE_BORROW if r.has_shorts else None
+    slippage, cell_borrow = r.cell if r.cell else (HEADLINE_SLIPPAGE, HEADLINE_BORROW if r.has_shorts else None)
+    borrow_used = cell_borrow if r.has_shorts else None
     be = _break_even(r.sweep, borrow_used)
     lines = [f"### Sizing rule: {r.name}   (run `{r.run_id}`)", ""]
+    if r.decides is True:
+        role = "**The verdict reads this one**: its registered sizing rule, execution convention and cost cell."
+    elif r.decides is False:
+        role = ("A flag, not the verdict: a different sizing rule or execution convention "
+                "from the registered one.")
+    else:
+        role = None
     lines += [
-        f"Headline cost cell: slippage {HEADLINE_SLIPPAGE}% per side"
-        + (f", borrow {HEADLINE_BORROW}% a year" if r.has_shorts else ", no shorts") + ".",
+        f"{'Decision' if r.decides is not None else 'Headline'} cost cell: slippage {slippage}% per side"
+        + (f", borrow {borrow_used}% a year" if r.has_shorts else ", no shorts") + ".",
+        *([role] if role else []),
         "",
         f"- **Significance (active return vs {benchmark}):** t = {_f(h['active_t_newey_west'])} "
         f"Newey-West, {h['active_hac_lags']} lags. Band: **{h['band']}**"
@@ -147,6 +156,8 @@ def render(ev):
     reg = ev.spec["registration"]
     head = [
         f"# {ev.strategy_id} — Stage {ev.stage} report", "",
+        *([f"Rule set {ev.ruleset}; execution convention: {ev.execution}.", ""]
+          if ev.ruleset != "v1" else []),
         f"Provenance: **{ev.spec['provenance']}**. Family: {ev.spec['family']}. "
         f"Registered {reg['registered_on']}; holdout from {reg['holdout_start']}, unseen.", "",
         f"**Binding constraint:** {ev.binding_constraint}", "",

@@ -44,6 +44,8 @@ class SizingResult:
     kelly_quarter: float
     zeroed_position_days: int
     has_shorts: bool
+    cell: tuple = None          # (slippage_pct, borrow_apr) the figures above are read at
+    decides: bool = None        # True: the verdict reads this one; None: rule set v1
 
 
 @dataclass
@@ -53,6 +55,9 @@ class Evaluation:
     spec: dict
     binding_constraint: str
     benchmark_name: str
+    ruleset: str = "v1"
+    execution: str = None
+    decision_cell: tuple = None
     book_note: str = None
     results: list = field(default_factory=list)
 
@@ -80,7 +85,7 @@ def _guard_holdout(spec, stage, *frames):
 def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by,
              effort, data_manifest, binding_constraint, base_cost,
              spy=None, book=None, stage=1, lag=1, on_missing="raise",
-             registry_directory=None, today=None):
+             registry_directory=None, today=None, execution=None):
     spec = registry.require_registered(strategy_id, registry_directory, today=today)
     reg = spec["registration"]
     if not (binding_constraint or "").strip():
@@ -99,7 +104,11 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
 
     regime_start = pd.Timestamp(reg["current_regime_start"])
     family = spec["family"]
-    out = Evaluation(strategy_id, stage, spec, binding_constraint, reg["benchmark"])
+    version = registry.ruleset(spec)
+    if version == "v2" and not (execution or "").strip():
+        raise ValueError("a rule set v2 evaluation states its execution convention")
+    out = Evaluation(strategy_id, stage, spec, binding_constraint, reg["benchmark"],
+                     ruleset=version, execution=execution)
     if isinstance(book, Book):
         out.book_note = book.note(today)
         book = book.returns
@@ -109,7 +118,16 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
         models = costs.sweep(base_cost, probe.has_shorts, probe.max_long_gross > 1.0 + backtest.EXPOSURE_TOLERANCE,
                              margin_apr=base_cost.margin_apr,
                              slippage_sweep=reg.get("slippage_sweep_pct"))
-        head = costs.headline(models)
+        if version == "v2":
+            if probe.has_shorts and reg.get("decision_borrow_apr") is None:
+                raise costs.CostNotStated(
+                    "this book shorts, so the registration must state decision_borrow_apr")
+            head = costs.cell(models, reg["decision_slippage_pct"],
+                              reg.get("decision_borrow_apr") if probe.has_shorts else None)
+            decides = name == reg["decision_sizing"] and execution == reg["decision_execution"]
+            out.decision_cell = (head.slippage_pct, head.borrow_apr)
+        else:
+            head, decides = costs.headline(models), None
 
         run_id = db.record_run(
             strategy_id, stage,
@@ -150,7 +168,7 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
         out.results.append(SizingResult(
             name, run_id, headline, regime, sweep_rows, head_bt.annual_turnover,
             gross_used, sizing.kelly_leverage(head_bt.net), head_bt.zeroed_position_days,
-            head_bt.has_shorts,
+            head_bt.has_shorts, (head.slippage_pct, head.borrow_apr), decides,
         ))
     return out
 

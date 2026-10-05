@@ -76,3 +76,47 @@ class Registration(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+V2 = '''ruleset = "v2"
+decision_sizing = "equal_weight"
+decision_execution = "next_open"
+decision_slippage_pct = 0.05
+decision_borrow_apr = 1.0'''
+
+
+class RuleSetV2(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+
+    def check(self, extra):
+        write_registration(self.dir, extra=extra)
+        return registry.problems(registry.load("toy", self.dir), today=TODAY)
+
+    def test_a_registration_without_a_rule_set_is_the_first(self):
+        write_registration(self.dir)
+        self.assertEqual(registry.ruleset(registry.load("toy", self.dir)), "v1")
+
+    def test_a_complete_v2_registration_passes(self):
+        self.assertEqual(self.check(V2), [])
+
+    def test_an_unknown_rule_set_is_refused(self):
+        self.assertTrue(any("ruleset" in p for p in self.check('ruleset = "v9"')))
+
+    def test_v2_without_a_decision_sizing_in_the_registered_rules_is_refused(self):
+        bad = V2.replace('"equal_weight"', '"kelly"')
+        self.assertTrue(any("decision_sizing" in p for p in self.check(bad)))
+
+    def test_v2_without_an_execution_convention_is_refused(self):
+        bad = V2.replace('decision_execution = "next_open"', 'decision_execution = ""')
+        self.assertTrue(any("decision_execution" in p for p in self.check(bad)))
+
+    def test_v2_with_a_missing_or_nonpositive_slippage_is_refused(self):
+        for bad in (V2.replace("decision_slippage_pct = 0.05\n", ""),
+                    V2.replace("0.05", "0"), V2.replace("0.05", "-1")):
+            self.assertTrue(any("decision_slippage_pct" in p for p in self.check(bad)))
+
+    def test_a_negative_borrow_is_refused_and_an_absent_one_is_allowed(self):
+        self.assertTrue(any("decision_borrow_apr" in p
+                            for p in self.check(V2.replace("= 1.0", "= -1.0"))))
+        self.assertEqual(self.check(V2.replace("decision_borrow_apr = 1.0", "")), [])
