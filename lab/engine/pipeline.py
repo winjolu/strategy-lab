@@ -28,6 +28,16 @@ class HoldoutViolation(RuntimeError):
     """Data on or after the registered holdout date reached a pre-Stage-3 run."""
 
 
+class BenchmarkCoverage(RuntimeError):
+    """The benchmark does not cover the returns being evaluated."""
+
+
+#: The share of return dates with no benchmark observation that is tolerated
+#: without a written acknowledgement. Two percent absorbs holidays and a late
+#: listing of a few weeks; nine years of a twenty-six year sample does not fit.
+BENCHMARK_GAP_TOLERANCE = 0.02
+
+
 class RegistrationMismatch(RuntimeError):
     """What was passed to evaluate is not what was registered."""
 
@@ -82,6 +92,31 @@ def _guard_holdout(spec, stage, *frames):
             )
 
 
+def _guard_benchmark(reg, returns, benchmark):
+    """Refuse a benchmark that silently shortens the evaluated sample.
+
+    `stats.summarise` keeps only the dates both series share, so a benchmark
+    that starts late drops every earlier year from every reported figure and
+    leaves only a smaller day count to show it. A registration that accepts
+    the shorter sample says so in `benchmark_coverage_acknowledged`, before
+    the run.
+    """
+    covered = returns.index.isin(benchmark.dropna().index)
+    gap = 1.0 - float(covered.mean()) if len(covered) else 0.0
+    if gap <= BENCHMARK_GAP_TOLERANCE:
+        return
+    first = benchmark.dropna().index.min() if benchmark.notna().any() else None
+    if str(reg.get("benchmark_coverage_acknowledged", "")).strip():
+        return
+    raise BenchmarkCoverage(
+        f"benchmark {reg['benchmark']!r} has no observation on {gap:.1%} of the "
+        f"{len(covered)} return dates (it starts {first:%Y-%m-%d}; the returns start "
+        f"{returns.index.min():%Y-%m-%d}), so those dates would drop out of every "
+        "figure. Name a benchmark that covers the sample, or write the shorter "
+        "sample into the registration as benchmark_coverage_acknowledged before running."
+    )
+
+
 def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by,
              effort, data_manifest, binding_constraint, base_cost,
              spy=None, book=None, stage=1, lag=1, on_missing="raise",
@@ -101,6 +136,7 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
             f"registered benchmark is {reg['benchmark']!r}"
         )
     _guard_holdout(spec, stage, returns, benchmark, *weights_by_sizing.values())
+    _guard_benchmark(reg, returns, benchmark)
 
     regime_start = pd.Timestamp(reg["current_regime_start"])
     family = spec["family"]

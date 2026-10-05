@@ -100,6 +100,7 @@ def summarise(net, benchmark, spy=None, book=None, trials=None, sharpe_variance=
 
     out = {
         "n_days": n,
+        "start": joined.index.min(), "end": joined.index.max(),
         "years": years,
         "absolute_cagr_pct": cagr,
         "absolute_sharpe_annual": perf.annualise(perf.sharpe(r), TRADING_DAYS),

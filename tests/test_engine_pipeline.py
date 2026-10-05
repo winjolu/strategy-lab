@@ -221,3 +221,65 @@ class ReportFlags(unittest.TestCase):
     def test_the_report_body_carries_no_cagr_and_no_verdict_wording(self):
         self.assertNotIn("CAGR", self.text)
         self.assertNotIn("record and drop", self.text)
+
+
+class BenchmarkCoverage(unittest.TestCase):
+    """A benchmark that starts late must not silently shorten the sample."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        write_registration(self.dir)
+        self.ret, self.bench = panel()
+        self.w = weights_for(self.ret)
+
+    def go(self, bench):
+        return pipeline.evaluate(
+            "toy", self.w, self.ret, bench, fresh_db(), produced_by="analyst-a", effort="medium",
+            data_manifest="synthetic", binding_constraint="settled cash",
+            base_cost=costs.CostModel(0.25), registry_directory=self.dir, today=TODAY)
+
+    def test_a_benchmark_starting_late_is_refused_and_says_which_dates_are_lost(self):
+        with self.assertRaises(pipeline.BenchmarkCoverage) as cm:
+            self.go(self.bench.iloc[300:])
+        message = str(cm.exception)
+        self.assertIn("starts", message)
+        self.assertIn(f"{self.bench.index[300]:%Y-%m-%d}", message)
+        self.assertIn("42.9%", message)
+
+    def test_a_benchmark_missing_in_the_middle_is_refused_too(self):
+        gappy = self.bench.copy()
+        gappy.iloc[100:250] = np.nan
+        with self.assertRaises(pipeline.BenchmarkCoverage):
+            self.go(gappy)
+
+    def test_a_written_acknowledgement_in_the_registration_allows_it(self):
+        write_registration(self.dir, extra='benchmark_coverage_acknowledged = "BENCH lists later; the shorter sample is accepted"')
+        ev = self.go(self.bench.iloc[300:])
+        self.assertEqual(ev.results[0].headline["n_days"], 400)
+
+    def test_a_gap_of_a_few_days_is_tolerated(self):
+        self.go(self.bench.iloc[5:])
+
+    def test_a_gap_just_over_the_tolerance_is_refused(self):
+        over = int(len(self.bench) * pipeline.BENCHMARK_GAP_TOLERANCE) + 2
+        with self.assertRaises(pipeline.BenchmarkCoverage):
+            self.go(self.bench.iloc[over:])
+
+    def test_the_report_prints_the_window_actually_evaluated(self):
+        write_registration(self.dir, extra='benchmark_coverage_acknowledged = "accepted"')
+        text = report.render(self.go(self.bench.iloc[300:]))
+        self.assertIn(f"Evaluated window: {self.bench.index[300]:%Y-%m-%d}", text)
+        self.assertIn("400 days", text)
+
+
+class BreakEvenPerBorrowRate(unittest.TestCase):
+    def test_every_swept_borrow_rate_gets_its_own_line_when_the_book_shorts(self):
+        d = tempfile.mkdtemp()
+        write_registration(d)
+        ret, bench = panel()
+        text = report.render(pipeline.evaluate(
+            "toy", weights_for(ret), ret, bench, fresh_db(), produced_by="analyst-a", effort="medium",
+            data_manifest="synthetic", binding_constraint="settled cash",
+            base_cost=costs.CostModel(0.25), registry_directory=d, today=TODAY))
+        self.assertEqual(text.count("Break-even slippage, at 1% borrow"), 2)
+        self.assertEqual(text.count("Break-even slippage, at 8% borrow"), 2)

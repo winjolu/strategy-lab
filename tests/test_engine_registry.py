@@ -120,3 +120,11 @@ class RuleSetV2(unittest.TestCase):
         self.assertTrue(any("decision_borrow_apr" in p
                             for p in self.check(V2.replace("= 1.0", "= -1.0"))))
         self.assertEqual(self.check(V2.replace("decision_borrow_apr = 1.0", "")), [])
+
+
+class BenchmarkAcknowledgement(unittest.TestCase):
+    def test_a_blank_acknowledgement_is_refused(self):
+        d = tempfile.mkdtemp()
+        write_registration(d, extra='benchmark_coverage_acknowledged = ""')
+        self.assertTrue(any("benchmark_coverage_acknowledged" in p
+                            for p in registry.problems(registry.load("toy", d), today=TODAY)))

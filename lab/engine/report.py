@@ -72,11 +72,25 @@ def _fmt_break_even(v):
     return f"{v:.3f}% per side ({v * 100:.1f}bp)"
 
 
+def _break_even_lines(sweep, borrows):
+    """One line per swept borrow rate. The cheapest case can look hopeless
+    at the hardest-to-borrow rate while the answer at general collateral is
+    informative, so reading it at one rate says little."""
+    lines = []
+    for borrow in borrows:
+        be = _break_even(sweep, borrow)
+        where = f"{_f(borrow, '.0f')}% borrow" if borrow is not None else "no borrow"
+        lines.append(f"- Break-even slippage, at {where}: t=0 at {_fmt_break_even(be[0.0])}; "
+                     f"t=2 at {_fmt_break_even(be[2.0])}.")
+    return lines
+
+
 def _sizing_block(r, benchmark):
     h = r.headline
     slippage, cell_borrow = r.cell if r.cell else (HEADLINE_SLIPPAGE, HEADLINE_BORROW if r.has_shorts else None)
     borrow_used = cell_borrow if r.has_shorts else None
-    be = _break_even(r.sweep, borrow_used)
+    borrows = sorted({row["borrow_apr"] for row in r.sweep if row["borrow_apr"] is not None}) \
+        if r.has_shorts else [None]
     lines = [f"### Sizing rule: {r.name}   (run `{r.run_id}`)", ""]
     if r.decides is True:
         role = "**The verdict reads this one**: its registered sizing rule, execution convention and cost cell."
@@ -93,8 +107,9 @@ def _sizing_block(r, benchmark):
         f"- **Significance (active return vs {benchmark}):** t = {_f(h['active_t_newey_west'])} "
         f"Newey-West, {h['active_hac_lags']} lags. Band: **{h['band']}**"
         + (" (negative: the edge is below the benchmark)" if h['active_t_newey_west'] < 0 else "") + ".",
-        f"- Break-even slippage, at {_f(borrow_used, '.0f') + '%' if borrow_used is not None else 'no'} "
-        f"borrow: t=0 at {_fmt_break_even(be[0.0])}; t=2 at {_fmt_break_even(be[2.0])}.",
+        f"- Evaluated window: {h['start']:%Y-%m-%d} to {h['end']:%Y-%m-%d}, {h['n_days']:,} days "
+        f"(the days the strategy and the {benchmark} benchmark share).",
+        *_break_even_lines(r.sweep, borrows),
         f"- Active return: {_f(h['active_mean_pct_per_year'])}% a year (active); "
         f"active Sharpe {_f(h['active_sharpe_annual'])} annualised (active).",
         f"- Absolute: Sharpe {_f(h['absolute_sharpe_annual'])} annualised (abs).",

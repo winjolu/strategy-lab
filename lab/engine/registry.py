@@ -111,6 +111,8 @@ def problems(spec, today=None):
         out.append(f"at least {MIN_SIZING_RULES} distinct sizing_rules are required")
 
     out += _ruleset_problems(reg)
+    if "benchmark_coverage_acknowledged" in reg and not _filled(reg["benchmark_coverage_acknowledged"]):
+        out.append("registration.benchmark_coverage_acknowledged must be a written acknowledgement, not blank")
 
     if dates.get("registered_on") and dates["registered_on"] > today:
         out.append("registered_on is in the future")
