@@ -317,14 +317,16 @@ unregistered strategy, which enforces that order. With no break argued,
 the three-year default applies, and every report on a shortened window
 says so.
 
+Decided 2026-10-05, taking the proposed defaults: the holdout boundary
+moves on 1 October, so equities move to 2025-10-01 (nothing had opened
+the 2024 holdout), and a strategy registered before a move keeps the
+holdout it registered with; a measured Sharpe is halved before sizing; a
+published effect size is halved before a prediction is written; a name
+is tradeable when an order is at most 1% of its average daily dollar
+volume; at most two variants per strategy.
+
 Still open:
 
-- The date in the year the holdout boundary moves, and what happens to
-  a strategy registered against the old boundary but not yet scored.
-- The haircut applied to a measured Sharpe before sizing.
-- The discount on a published effect size (proposed one half), the
-  fraction of daily dollar volume that defines an eligible name, and the
-  cap on variants per strategy (proposed two).
 - The two existing registrations. The killed one stays under version 1.
   The unrun one can be re-registered under version 2 before its first
   run, with its holdout length addressed first.

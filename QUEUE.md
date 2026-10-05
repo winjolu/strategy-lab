@@ -41,23 +41,42 @@ Last reconciled against disk: 2026-09-23.
 
 Ranked by information gained per day of work, not by claimed return.
 
-1. **Fix the two defects the first real Stage 1 run exposed.** Both are
-   routine builds and both would have misled a closer result.
+1. **Build the evaluation rules into the engine.** The rules adopted on
+   2026-10-03 (shared `METHODOLOGY.md`, "Evaluation stages"; reasoning and
+   findings in `docs/reviews/stage-rules-2026-10-02.md`) are not enforced by
+   any code, so no strategy can be judged under them yet. This item also
+   absorbs the two defects the first Stage 1 run exposed, which turned out to
+   be symptoms of the same gap. Routine builds, in this order:
+   - **The decision cell as registered fields.** The registration names the
+     one sizing rule, execution convention and cost cell the verdict reads,
+     and the pipeline computes the headline, the current-regime slice and the
+     Sharpe stored for deflation there. Today the kill rule is read at 5bp and
+     1% borrow while those figures are computed at 25bp and 8%.
+   - **The score and the holdout rules.** Net-of-cost Sharpe of the active
+     return over training and holdout pooled, tiers at 1.0 and 1.5, the
+     out-of-sample score withheld until the holdout holds a year, and every
+     look at the holdout recorded in the database and counted.
+   - **Gates and flags separated.** `stats.band()` stops returning a verdict
+     phrase, the minimum track record is always computed, and CAGR leaves the
+     report body.
    - **Refuse a benchmark that does not cover the sample.** `stats.summarise`
      inner-joins the strategy with its benchmark and drops the rest silently.
      `xs-mr-khandani-lo` registered BIL, which starts 2007-05-30, so nine of
      its 26 years vanished from every figure and the report said only
-     "n=4364". The evaluated window should be printed in every report, and
-     the pipeline should refuse (or require an explicit acknowledgement) when
-     it starts materially later than the returns supplied. Pre-2007 has no
-     Treasury-bill ETF in `fundprices`; a registration needing that span has
-     to name a different cash benchmark or accept the shorter sample in
-     writing before running.
-   - **Show break-even at every swept borrow rate.** The report reads it only
-     at 8%, where a short book is already negative at the cheapest cost, so
-     the line said nothing. At 1% the answer was about 1.3bp.
-   Also noticed: the current-regime slice is computed only at the headline
-   cost cell, while a kill criterion may read it at another.
+     "n=4364". Print the evaluated window in every report and refuse, or
+     require a written acknowledgement, when the benchmark starts materially
+     later than the returns. Pre-2007 has no Treasury-bill ETF in
+     `fundprices`.
+   - **Break-even at every swept borrow rate**, not only 8%, where a short
+     book is already negative at the cheapest cost.
+   - **The random-thinning control.** The shared method requires one on every
+     filter and nothing implements it. Build it or take it out of the shared
+     method; either way, decide.
+   Decided 2026-10-05 (shared `METHODOLOGY.md`): new equity registrations
+   use a holdout from 2025-10-01, moving each 1 October; a measured Sharpe is
+   halved before sizing; published effect sizes are halved; a name is
+   tradeable at no more than 1% of its average daily dollar volume; at most
+   two variants per strategy.
 2. **`crypto-perp-funding-carry` — spot-perpetual basis.** A perpetual future
    is a contract with no expiry that stays near the spot price because one side
    pays the other a periodic funding rate. Holding spot and shorting the
