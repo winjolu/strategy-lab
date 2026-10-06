@@ -14,7 +14,18 @@ stay honest.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- The registration of `crypto-perp-funding-carry`, under rule set v2 and
+  before any of its data was fetched for analysis. It holds BTC or ETH on
+  Deribit as the collateral for a short of the same dollar amount of the
+  inverse perpetual, which cancels the inverse contract's convexity exactly
+  and leaves a position no price move can liquidate. Crypto days are folded
+  onto the equity calendar, so annualising at 252 stays correct and the
+  cash benchmark has no gaps. The prediction is a training score most
+  likely below the floor, because Deribit's rule pays nothing near par and
+  adds no interest component. Deribit does not serve US persons, so a
+  passing score earns no paper slot until a venue the account can trade is
+  found.
 
 ## 2026-10-05
 

@@ -56,16 +56,22 @@ Ranked by information gained per day of work, not by claimed return.
    missing an hour has no funding rather than a short one) and a signed funding
    term in the backtest and pipeline (a missing rate on a held funding-bearing
    position is an error, not a zero). Not yet run against the live endpoints:
-   nothing is fetched until a registration names its cutoff. **Open for the
-   registration:** the stats and score modules annualise with 252 trading
-   days, and crypto trades 365 daily rows a year, which understates a daily
-   Sharpe by about a fifth; the annualisation factor has to become a stated
-   input before any crypto figure is read. Then the registration
-   under rule set v2, which is the part that needs a stronger model: what
-   convexity and venue-specific rules mean for the hypothesis, and what the
-   prediction and kill criteria are. Still to check with Kalshi and the broker,
-   and not needed to test it: whether this account can trade perpetuals, how
-   their funding is set, and what history exists.
+   nothing is fetched until a registration names its cutoff. **Registered
+   2026-10-06** (`registry/crypto-perp-funding-carry.md`, rule set v2): BTC
+   and ETH on Deribit, coin held as collateral against a 1x short inverse
+   perpetual, which cancels the convexity exactly and cannot be liquidated by
+   price; decision book is the catalogue's threshold rule (10% a year on a
+   30-day mean) at 0.15% per side; training 2022-10-03 to 2025-09-30, holdout
+   from 2025-10-01. The annualisation question is settled by folding crypto
+   days onto the equity calendar, so 252 stays correct and BIL lines up. The
+   account cannot trade Deribit, so a passing score earns no paper slot until
+   a tradeable venue is found. **Next, routine build:** perpetual price and
+   index fetch, the unit's return and negated funding series, the calendar
+   fold, a pipeline refusal for more than 260 rows a year, the strategy module
+   and runner with the Hyperliquid cross-check, and mutation tests. Still to
+   check with Kalshi and the broker, and not needed to test it: whether this
+   account can trade perpetuals, how their funding is set, and what history
+   exists.
 2. **Build the Compustat-to-Sharadar field map for the 23 OSAP entries.** The
    catalogue's claim that 29 entries are testable today rests on an unverified
    assumption that this archive carries the accounting fields the OSAP
