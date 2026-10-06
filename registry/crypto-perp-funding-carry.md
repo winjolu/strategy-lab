@@ -96,7 +96,7 @@ and the one-year holdout minimum mean what they say elsewhere in the lab,
 and the stated annualisation factor is 252. The cost is that decisions are
 taken only at the end of an equity trading day, which a strategy holding
 for weeks does not need otherwise. The pipeline will refuse a return
-series with more than 260 rows a year, so a 365-row series is never
+series with more than 270 rows a year, so a 365-row series is never
 annualised at 252 by mistake.
 
 **Execution: `utc_midnight`.** The decision dated `D` reads funding through
@@ -170,7 +170,7 @@ level, and it decides nothing.
 since only funding is fetched there. Hyperliquid's rule is the average
 premium plus a clamp of an interest component, 0.01% per eight hours, paid
 hourly. It differs from Deribit's by construction, which is what the
-prediction tests. It is recorded as a run and counted as a trial.
+prediction tests. It is a printed comparison of mean funding on the days both venues have complete, not a pipeline run, since the prediction it tests is about funding and not about a score.
 
 **What no figure here measures.** A venue that failed is not in the data:
 only venues that survived serve history, and FTX, which failed in November
@@ -194,16 +194,26 @@ broadly when prices rose and fell, which cannot be set aside. The holdout
 is therefore not blind to the market's direction, and weighs as less
 evidence than a holdout I knew nothing about.
 
-## What has to be built before Stage 1
+**Amended 2026-10-06, before any run.** Four engineering details the text
+above did not fix. The pipeline's refusal threshold for rows a year is 270, not
+260: weekdays with no holidays give 261, crypto's own calendar 365, and 270
+separates them. The last UTC day before the cutoff has its end price stamped at
+the cutoff itself, which the fetch drops, so the evaluated rows end on the last
+trading day at least two days before the holdout. The Hyperliquid cross-check is
+the printed funding comparison described above, not a counted run. And one
+consequence of the design is stated here so it is not read as a result later: the
+unit holds its collateral in coin, which earns no cash interest, so its return is
+funding plus the basis move and the active return is that less the Treasury bill
+yield. With no funding at all it would show about minus the bill yield. No
+parameter, sizing rule, cell, window or kill criterion changed.
 
-- A fetch of each perpetual's daily price at 00:00 UTC and the index at
-  the same moment, cut at the holdout as the funding fetch is.
-- The unit's return series, the negated funding series, and the fold onto
-  the equity calendar, with a missing day staying missing.
-- A pipeline refusal for a return series with more than 260 rows a year.
-- The strategy module (both sizing rules and the cash column) and its
-  runner, including the Hyperliquid cross-check and the volume measurement.
-- Each guard broken once to show a test catches it.
+## Build state
+
+Built 2026-10-06, not yet run: the price fetch (`lab/data/perp_prices.py`),
+the strategy module and the fold (`lab/strategies/crypto_perp_funding_carry.py`),
+the rows-a-year refusal in the pipeline, and the runner
+(`scripts/run_crypto_perp_funding_carry_stage1.py`). Every new guard was
+broken once and a test caught it.
 
 ## Binding constraint
 

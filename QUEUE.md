@@ -65,10 +65,12 @@ Ranked by information gained per day of work, not by claimed return.
    from 2025-10-01. The annualisation question is settled by folding crypto
    days onto the equity calendar, so 252 stays correct and BIL lines up. The
    account cannot trade Deribit, so a passing score earns no paper slot until
-   a tradeable venue is found. **Next, routine build:** perpetual price and
-   index fetch, the unit's return and negated funding series, the calendar
-   fold, a pipeline refusal for more than 260 rows a year, the strategy module
-   and runner with the Hyperliquid cross-check, and mutation tests. Still to
+   a tradeable venue is found. **Built 2026-10-06, not yet run:** the price fetch, the calendar
+   fold, the strategy module, a pipeline refusal for more than 270 rows a
+   year and the runner (`scripts/run_crypto_perp_funding_carry_stage1.py`),
+   all mutation-tested. **Next:** run Stage 1 once (it fetches from Deribit and
+   Hyperliquid; the holdout is never requested), read the data-gap lines before
+   the report, then record the verdict. Still to
    check with Kalshi and the broker, and not needed to test it: whether this
    account can trade perpetuals, how their funding is set, and what history
    exists.

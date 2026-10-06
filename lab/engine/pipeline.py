@@ -96,6 +96,28 @@ def _guard_holdout(spec, stage, *frames):
             )
 
 
+MAX_ROWS_PER_YEAR = 270        # weekdays with no holidays give 261; crypto's own calendar gives 365
+RATE_CHECK_MIN_DAYS = 90       # a shorter span says nothing about a rate
+
+
+def _guard_row_rate(returns):
+    """Refuse a return series with more rows a year than the equity calendar.
+
+    Every Sharpe here is annualised with 252, which is only right for rows on
+    that calendar. A 365-row crypto series annualised at 252 understates its
+    Sharpe by about a fifth, and nothing in the figures would show it.
+    """
+    index = returns.index
+    span = (index.max() - index.min()).days if len(index) > 1 else 0
+    if span < RATE_CHECK_MIN_DAYS:
+        return
+    per_year = (len(index) - 1) / (span / 365.25)
+    if per_year > MAX_ROWS_PER_YEAR:
+        raise ValueError(
+            f"the return series has {per_year:.0f} rows a year; the lab annualises at 252, "
+            f"so a series on another calendar must be folded onto the equity calendar first")
+
+
 def _guard_benchmark(reg, returns, benchmark):
     """Refuse a benchmark that silently shortens the evaluated sample.
 
@@ -141,6 +163,7 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
         )
     _guard_holdout(spec, stage, returns, benchmark, *weights_by_sizing.values())
     _guard_benchmark(reg, returns, benchmark)
+    _guard_row_rate(returns)
 
     regime_start = pd.Timestamp(reg["current_regime_start"])
     family = spec["family"]

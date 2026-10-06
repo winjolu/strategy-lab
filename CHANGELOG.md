@@ -26,6 +26,16 @@ stay honest.
   adds no interest component. Deribit does not serve US persons, so a
   passing score earns no paper slot until a venue the account can trade is
   found.
+- The build behind that registration: a fetcher for Deribit's perpetual prices
+  and index values at 00:00 UTC (`lab/data/perp_prices.py`), cut before the
+  holdout with the index endpoint's full-history reply trimmed in memory; the
+  strategy module with the fold onto the equity calendar and both sizing
+  rules; and a Stage 1 runner. Not yet run. Thirty-two guards broken, all
+  caught; one more mutation was an equivalent no-op and the dead call was
+  removed instead.
+- The pipeline refuses a return series with more than 270 rows a year, since
+  every Sharpe is annualised at 252 and a 365-row series would be understated
+  by about a fifth without any figure showing it.
 
 ## 2026-10-05
 
