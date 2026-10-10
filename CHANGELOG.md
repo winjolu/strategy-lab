@@ -37,6 +37,19 @@ stay honest.
   every Sharpe is annualised at 252 and a 365-row series would be understated
   by about a fifth without any figure showing it.
 
+### Fixed
+- The Deribit funding fetch dropped the first hour of every 30-day chunk, because
+  the endpoint excludes a row stamped exactly at its start. Every chunk boundary
+  day then had 23 hours and no funding. The tests missed it because their fake
+  endpoint included its start; it now excludes it, and a test fails without the
+  fix.
+
+### Known
+- The first Stage 1 run of `crypto-perp-funding-carry` is recorded in its
+  registration. By the registered letter it ends the strategy, but its spot leg
+  is an index served every six hours with an undocumented stamp, and the
+  volatility it implies is five to ten times a hedge's. No verdict is recorded.
+
 ## 2026-10-05
 
 ### Added

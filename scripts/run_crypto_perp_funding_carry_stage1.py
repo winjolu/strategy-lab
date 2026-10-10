@@ -107,7 +107,16 @@ def main():
     inputs = strat.assemble(ratio, funding, bil, calendar)
     complete = (inputs.returns[["btc", "eth"]].notna().all(axis=1)
                 & inputs.funding.notna().all(axis=1) & inputs.benchmark.notna())
-    first = complete[complete].index.min()
+    # the unbroken run that reaches the end of the sample: a hole in the
+    # middle is a venue gap, never filled, so evaluation begins after the last one
+    broken = complete[~complete].index
+    first = complete.index[complete.index > broken.max()].min() if len(broken) else complete.index.min()
+    if len(broken):
+        print(f"rows without complete data: {len(broken)}, last on {broken.max():%Y-%m-%d}; "
+              f"evaluation starts {first:%Y-%m-%d}", file=sys.stderr)
+    if first > pd.Timestamp(reg["current_regime_start"]):
+        raise SystemExit(f"the unbroken run starts {first:%Y-%m-%d}, after the training window "
+                         f"begins ({reg['current_regime_start']}); the data cannot support this test")
     inputs.weights_by_sizing = {k: v.loc[first:] for k, v in inputs.weights_by_sizing.items()}
     inputs.returns, inputs.funding, inputs.benchmark = (
         inputs.returns.loc[first:], inputs.funding.loc[first:], inputs.benchmark.loc[first:])

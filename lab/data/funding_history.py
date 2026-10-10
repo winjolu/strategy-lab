@@ -100,8 +100,13 @@ def fetch_deribit(session, instrument, start, cutoff, sleep=time.sleep, pace=Non
     step = CHUNK_DAYS * 86_400_000
     while lo <= hi_limit:
         hi = min(lo + step - 1, hi_limit)
+        # Deribit's funding endpoint excludes a row stamped exactly at
+        # start_timestamp (end is inclusive), so asking from `lo` would drop
+        # the hour at each chunk boundary. Found 2026-10-10: one missing hour
+        # every 30 days, which made every boundary day unknown. Asking from
+        # one millisecond earlier loses nothing, since rows sit on the hour.
         body = _request(session, "GET", DERIBIT, sleep=sleep, params={
-            "instrument_name": instrument, "start_timestamp": lo, "end_timestamp": hi})
+            "instrument_name": instrument, "start_timestamp": lo - 1, "end_timestamp": hi})
         if "result" not in body:
             raise FetchFailed(f"Deribit answered without a result: {str(body)[:120]}")
         rows += [(r["timestamp"], r["interest_1h"]) for r in body["result"]]

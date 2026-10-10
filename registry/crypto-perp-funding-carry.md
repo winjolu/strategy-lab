@@ -223,7 +223,62 @@ history, which is the enabling step above.
 
 ## Stage results
 
-None yet.
+### Stage 1, run 2026-10-10 (training window only; the holdout was never requested)
+
+Runs: `983da5285511487abee728ff8841b00a` (threshold, the decision book) and
+`3eadc052be034b4e8b05f4b368081f89` (always-on). Report in the lab's data
+directory under `reports/`.
+
+**A void run precedes them.** `4c2f3bc6f23c43509d7ff8ccbd8db468` was recorded
+before the fetcher was fixed and is void. Deribit's funding endpoint excludes a
+row stamped exactly at `start_timestamp`, so the fetcher dropped the first hour
+of every 30-day chunk and every boundary day had 23 hours and therefore no
+funding. The backtest refused to hold through those days, as designed, and
+stopped. Its threshold-book figures had been written before it stopped; I did
+not read them. Its trial stays counted. The fake endpoint in the tests had
+included its start, which is why the tests passed; it now excludes it, and the
+fetcher asks from one millisecond earlier.
+
+**One genuine venue gap.** Deribit serves no funding for 06:00 and 07:00 UTC on
+2020-08-27, for either coin. A day is never filled, so the evaluated rows start
+on the first equity trading day after it, 2020-08-28, and the sample is 1,277
+rows to 2025-09-29. The training window, 2022-09-30 to 2025-09-29, is
+complete. The first 16 months of the original sample are dropped from context.
+
+**What was measured, training window, 751 rows.** Decision book (threshold),
+net of 0.15% per side: active Sharpe 0.32, active return 2.48% a year, active
+volatility 7.7%; before slippage, 0.46. Always-on: 0.16 and 0.16. Funding
+received, always-on, was 6.4% a year on BTC and 5.1% on ETH; the basis term
+added 1.4% and 1.9%. The decision book was in position on 28% of days for BTC
+and 23% for ETH. Context history, 2020-08-28 on: t 2.48 on the decision book,
+a flag. Hyperliquid's funding averaged 9.2 points a year above Deribit's on
+BTC and 11.2 on ETH over 843 common days.
+
+**Prediction scored.** Right: funding of 3% to 9% a year; the decision book's
+active mean inside minus 2% to plus 4%; a training score below the floor; the
+threshold book above the always-on book; in position fewer than half the days;
+Hyperliquid at least 5 points above Deribit. Wrong: ETH was expected to pay
+more than BTC and paid less; volatility was expected at 1% to 3% and was
+7.7% and 16.8%; the absolute Sharpe was expected above 2 and was 0.93 and 0.43.
+The invalid-run clause did not fire: the basis term was well under half of the
+gross return.
+
+**The kill criterion fires on the measurement, and I do not trust the
+measurement.** The Sharpe at the 0.0% cell on the training window is 0.46,
+below the 1.0 the registration set, which by its letter ends the strategy with
+no rescue. But the volatility is five to ten times what a hedged position
+should show, and I have not recorded a verdict. The cause I can see is
+the spot leg: the index series Deribit serves for its full history is spaced
+every six hours, not hourly, and its stamp convention is not documented. The
+basis level it implies (index over perpetual, minus one) has a standard
+deviation of 0.65% on BTC at the stamp as registered, falling to 0.42% when
+the index is read two hours later, and still falling, which is what a stamp
+that is early would produce. Noise in the basis adds volatility without adding
+return and lowers the Sharpe, the direction the registration called
+conservative; it did not expect it to be this large. Whether a cleaner spot
+series would lift the score above 1.0 is unknown, and whether to look is a
+change to a registered measurement made after seeing a result, so it is
+recorded here as that and not as a rescue.
 
 ## Variants
 

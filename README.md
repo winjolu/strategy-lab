@@ -27,8 +27,8 @@ written before the run got one thing wrong (see `registry/`).
 | Candidate strategies catalogued | 41, ranked by information gained per day of work |
 | Strategies registered (prediction and kill criteria fixed before any run) | 3 |
 | Strategies tested at Stage 1 | 1, killed |
-| Tests | 427 |
-| Guards deliberately broken to prove the tests notice | 228, all caught |
+| Tests | 428 |
+| Guards deliberately broken to prove the tests notice | 229, all caught |
 | Data collected forward that no vendor sells | Kalshi quotes and order book depth, recorded continuously |
 
 ## What building it has already found
@@ -117,7 +117,7 @@ ops/           installer for the recorder's scheduled jobs
 scripts/       the Stage 1 runners, one per strategy
 docs/          the audit trail: account constraints, archive survey, defects,
                reviews, the catalogue and its ranking
-tests/         427 tests
+tests/         428 tests
 ```
 
 The shared data layer, `market_core`, is a separate private package used by this
@@ -144,7 +144,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/pip install -e "$HOME/market-data/market-core"
 
-.venv/bin/python -m pytest                             # 427 tests
+.venv/bin/python -m pytest                             # 428 tests
 cp book/holdings.example.toml book/holdings.toml       # then fill in real holdings
 .venv/bin/python -m lab.recorders.kalshi status        # forward recorder health
 ```

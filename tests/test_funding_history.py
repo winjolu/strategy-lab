@@ -28,6 +28,7 @@ class DeribitSession:
     def request(self, method, url, headers=None, timeout=None, params=None, json=None):
         self.calls.append(params)
         lo, hi = params["start_timestamp"], params["end_timestamp"]
+        lo += 1     # the real endpoint excludes a row stamped exactly at the start
         first = ((lo - T0 + HOUR - 1) // HOUR) * HOUR + T0
         rows = [{"timestamp": t, "interest_1h": self.rate, "interest_8h": 8 * self.rate}
                 for t in range(first, hi + 1, HOUR) if t not in self.drop]
@@ -38,6 +39,11 @@ NOWAIT = dict(sleep=lambda s: None)
 
 
 class Deribit(unittest.TestCase):
+    def test_a_chunk_boundary_loses_no_hour_against_an_endpoint_that_excludes_its_start(self):
+        frame = fh.fetch_deribit(DeribitSession(), "BTC-PERPETUAL", "2024-01-01", "2024-04-01", **NOWAIT)
+        self.assertEqual(len(frame), 91 * 24)
+        self.assertTrue(fh.daily_funding(frame).notna().all())
+
     def test_rows_stop_before_the_cutoff_and_none_is_requested_past_it(self):
         s = DeribitSession()
         frame = fh.fetch_deribit(s, "BTC-PERPETUAL", "2024-01-01", "2024-02-15", **NOWAIT)
