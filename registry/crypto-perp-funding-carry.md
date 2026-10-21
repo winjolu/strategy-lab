@@ -5,7 +5,7 @@ provenance = "literature"
 source = "Exchange funding rules as published by Deribit and Hyperliquid; Gornall, Rinaldi and Xiao, Perpetual Futures and Basis Risk: Evidence from Cryptocurrency (SSRN working paper, 2024). Catalogue entry crypto-perp-funding-carry."
 account = "none yet"
 enabling_step = "A venue this account can trade whose perpetual funding is set by a published rule. Deribit, the venue tested, does not serve US persons. Kalshi's 25 perpetual series are the first to check: whether the account can trade them, how their funding is set, and what history they serve."
-stage = 0
+stage = 3
 
 [registration]
 registered_on = "2026-10-06"
@@ -358,6 +358,26 @@ days, and BIL has no bar on either, so a later end would put a gap inside the
 cash column. Through 2026-10-09 the holdout holds 258 equity trading days, above
 the 252 its score needs. The fetch cutoff is 2026-10-12, exclusive.
 
+### Stage 3, holdout read 2026-10-21, once
+
+Runs: `bb1e7abbaf90416fb326dbb264f2ed11` (threshold, the decision book) and
+`5b3a303f01b047ddaf6d5b38fe545639` (always-on). The holdout read is recorded in
+the results database; this strategy cannot read it again.
+
+**Score: 1.74, tier clear.** The decision book's active Sharpe, net of 0.15% per
+side, over the training window and the holdout pooled, 2022-10-03 to
+2026-10-09, 1,009 days of which 258 are holdout. Always-on: 0.48, below the floor.
+
+**The holdout on its own says something the score does not.** Funding fell to
+2.6% a year on BTC and 1.5% on ETH, below the 3.1% Treasury bills paid. The
+threshold never fired: the decision book held cash on every holdout day, and
+its active return of minus 0.27% a year is the cost of leaving the positions it
+held on 2025-09-30. Its holdout Sharpe of minus 1.4 is the Sharpe of a constant
+and means nothing. Always-on, which held the carry throughout, lost 1.02% a year
+to bills. So the clear score is the training years' carry, and the year out of
+sample shows two things only: the carry stopped paying more than cash, and the
+threshold rule kept the book out while it did.
+
 ## Variants
 
 Every variant is a trial for deflation. One change at a time, the economic
@@ -370,3 +390,4 @@ reason written before the run.
 
 | date | verdict | run id | basis |
 |------|---------|--------|-------|
+| 2026-10-21 | Clear (score 1.74); eligible for a paper slot once a venue the account can trade is found; takes none now | `bb1e7abbaf90416fb326dbb264f2ed11` (Stage 1 runs `900fdbd900944fd9aa583555f63a038e`, void `4c2f3bc6f23c43509d7ff8ccbd8db468`, superseded `983da5285511487abee728ff8841b00a`) | Pooled active Sharpe over 2022-10-03 to 2026-10-09; the holdout year had funding below bills and the decision book in cash throughout |

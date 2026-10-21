@@ -54,6 +54,10 @@ stay honest.
   decision book's training-window active Sharpe is 2.17, on an active return of
   1.67% a year over bills. The kill criterion does not fire; the holdout is
   next, read once.
+- Holdout read once, through 2026-10-09: pooled score 1.74, tier clear. In the
+  holdout year funding fell below the bill rate and the threshold rule held cash
+  every day, so the score rests on the training years. Eligible for a paper slot
+  only once a venue the account can trade is found.
 
 ## 2026-10-05
 
