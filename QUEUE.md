@@ -74,7 +74,24 @@ Ranked by information gained per day of work, not by claimed return.
    check with Kalshi and the broker, and not needed to test it: whether this
    account can trade perpetuals, how their funding is set, and what history
    exists.
-2. **Build the Compustat-to-Sharadar field map for the 23 OSAP entries.** The
+   **Stage 1 run 2026-10-10:** the kill criterion fired, but the spot leg
+   was an index sampled every six hours and the hedge measured five to ten times
+   too volatile. **Amended 2026-10-21:** one re-measurement with Coinbase hourly
+   spot, accepted only if the basis noise falls below 0.25% on both coins; if
+   not, the kill stands. Recorded in the registration.
+2. **`overnight-index-hold` — SPY held only from the close to the next open.**
+   Queued 2026-10-21, after the funding carry's re-measurement. Draft
+   registration in `docs/drafts/overnight-index-hold.md`, written before any
+   look; it is registered by moving it to `registry/` and committing. Before
+   that: send its three citations to the methods-review literature check, and
+   settle the three points the draft lists (the ex-dividend open, intraday cash,
+   and a close-to-open return convention the engine does not have yet). The
+   run is void if the archive's opens disagree with the broker's on more than
+   1% of 250 sampled dates per ticker. Expected to be killed at Stage 1; it is
+   queued because it is cheap and answers whether intraday SPY has earned
+   anything.
+
+3. **Build the Compustat-to-Sharadar field map for the 23 OSAP entries.** The
    catalogue's claim that 29 entries are testable today rests on an unverified
    assumption that this archive carries the accounting fields the OSAP
    definitions name. Until the map exists, that count means nothing.
@@ -82,7 +99,7 @@ Ranked by information gained per day of work, not by claimed return.
    against the 112 columns of `fundamentals`.
    Routine work, gates the next item and any OSAP entry.
 
-3. **Value-weighting versus equal-weighting across three OSAP entries.** A
+4. **Value-weighting versus equal-weighting across three OSAP entries.** A
    methodology test rather than a strategy, and the highest-value single day in
    the catalogue: it plausibly eliminates half the equity set.
    Depends on the field map above.

@@ -280,6 +280,34 @@ series would lift the score above 1.0 is unknown, and whether to look is a
 change to a registered measurement made after seeing a result, so it is
 recorded here as that and not as a rescue.
 
+### Re-measurement of the spot leg, amended 2026-10-21, after the first Stage 1 result and before any new data
+
+This amendment is made after a result, and that is its weakness: the first
+run scored below the floor, and replacing a measurement after a low score is
+how a test gets rerun until it passes. It is limited to one change, settled
+here before the new series is fetched.
+
+**The change.** The spot price `S` becomes the close of the 23:00 UTC hourly
+candle on Coinbase Exchange's BTC-USD and ETH-USD order books, the last trade
+before midnight, the same convention as the perpetual's price `F`. Coinbase is
+a US dollar spot venue, serves hourly history back past the sample start, and
+is one of the exchanges Deribit's index is built from. Nothing else changes:
+not the perpetual's price, the funding, the calendar fold, the evaluated sample
+(2020-08-28 on), the sizing rules, the cell, the windows or the kill criteria.
+
+**The test that decides whether the change is accepted, read before any
+return.** Over the training window, the standard deviation of the basis level
+`S / F − 1` at day ends must be below 0.25% for both coins. As registered it
+was 0.65% on BTC and 0.86% on ETH. If either coin fails, the change is
+rejected, no other spot source is tried, and the first run's result stands:
+the kill criterion fires and the strategy is killed. The test reads only the
+noise in the basis, not the return, so it cannot be passed by choosing the
+series that scores best.
+
+**If it is accepted**, Stage 1 runs once more on the new spot leg and the kill
+criterion is read on that run. Both runs stay recorded, the new one is a
+counted trial, and the verdict names both run ids.
+
 ## Variants
 
 Every variant is a trial for deflation. One change at a time, the economic
