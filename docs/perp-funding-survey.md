@@ -49,3 +49,42 @@ Before this survey, one page per venue was read to measure depth. For OKX that
 included two recent funding values, and for Kraken and Hyperliquid the first
 rate of each listing. None of it was analysed. The registration for this
 strategy states it, since the most recent year is the natural holdout.
+
+## Kalshi, measured 2026-10-21
+
+Kalshi lists 29 perpetuals through a separate API under `/trade-api/v2/margin`,
+public for reading, and serves its whole funding history in one request: 420
+eight-hourly settlements per contract from launch on 2026-06-03, with no gaps.
+The contracts are dollar-margined and linear, cleared by Kalshi Klear, with
+leverage up to 6x. Each market states its rule's parameters: a cap of 2% per
+interval, and for crypto a dead band of 0.01% per interval, below which the rate
+is set to zero. That band is about 11% a year annualised, so funding is zero
+unless the premium is large.
+
+| Contract | Mean funding, launch to 2026-10-21 | Last 30 days | Intervals at zero |
+|---|---|---|---|
+| BTC | 9.0% a year | 13.0% | 49% |
+| ETH | −1.0% | 1.2% | 84% |
+| SOL | 3.6% | 15.6% | 81% |
+| XRP | 6.1% | 19.6% | 59% |
+
+Over 2026-06-04 to 2026-10-11, Deribit paid 3.2% a year on BTC and 2.5% on ETH,
+and BIL returned 2.1% a year over June to October. Kalshi's BTC funding has run
+well above both. Its open interest is small, about $19 million on BTC, and the
+rate looks like the price of US retail demand for leverage on one venue.
+
+What this does and does not settle:
+
+- **Four and a half months is not a test.** The evaluation rules need three
+  years of training and a year of holdout. Kalshi's history cannot be scored
+  before mid-2027 at the earliest, and only for a strategy registered on that
+  venue's own rule. Nothing needs recording in the meantime: the endpoint serves
+  every settlement since launch.
+- **The hedge is a different trade here.** On Deribit the coin is the
+  collateral for an inverse contract, so the position cannot be liquidated by a
+  rally. On Kalshi the short is dollar-margined and the coin would sit at
+  another venue, so a rally drains the short's margin while the gain sits
+  elsewhere. Liquidation risk returns, and the capital needed is the spot plus
+  the margin, which cuts the return on capital below the funding rate.
+- **Costs are not yet measured.** Kalshi's perpetual fee schedule and the spot
+  leg's cost at the broker are both unchecked.
