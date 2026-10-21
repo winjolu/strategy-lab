@@ -1,6 +1,6 @@
 """Stage 1 for `crypto-perp-funding-carry`, into the real results database.
 
-Fetches Deribit funding, perpetual prices and index values for BTC and ETH,
+Fetches Deribit funding and perpetual prices and Coinbase spot for BTC and ETH,
 every request cut strictly before the registered holdout, then folds them
 onto the equity calendar and evaluates both sizing rules at the registered
 cell. Prints the data gaps, the perpetuals' dollar volume and a Hyperliquid
@@ -29,7 +29,12 @@ from lab.strategies import crypto_perp_funding_carry as strat
 
 STRATEGY_ID = "crypto-perp-funding-carry"
 EXECUTION = "utc_midnight"
-COINS = {"btc": ("BTC-PERPETUAL", "btc_usd", "BTC"), "eth": ("ETH-PERPETUAL", "eth_usd", "ETH")}
+COINS = {"btc": ("BTC-PERPETUAL", "btc_usd", "BTC", "BTC-USD"),
+         "eth": ("ETH-PERPETUAL", "eth_usd", "ETH", "ETH-USD")}
+#: The registration's 2026-10-21 amendment: the spot leg is the last Coinbase
+#: trade before midnight, accepted only if the basis noise over the training
+#: window is below this, in percent, on both coins.
+MAX_BASIS_NOISE_PCT = 0.25
 FETCH_START = "2018-08-01"          # earlier than either perpetual lists
 HYPERLIQUID_START = "2023-05-12"
 BINDING_CONSTRAINT = (
@@ -52,7 +57,7 @@ def cross_check(session, cutoff, deribit_daily, training_start):
     training days both venues have complete. A flag, not a trial."""
     print("\n=== Hyperliquid cross-check (flag; funding only, no basis) ===", file=sys.stderr)
     lines = []
-    for coin, (_, _, hl) in COINS.items():
+    for coin, (_, _, hl, _) in COINS.items():
         frame = fh.fetch_hyperliquid(session, hl, HYPERLIQUID_START, cutoff)
         hl_daily = fh.daily_funding(frame)
         both = pd.concat({"hl": hl_daily, "deribit": deribit_daily[coin]}, axis=1).dropna()
@@ -79,21 +84,37 @@ def main():
     archive = default_archive()
 
     ratio, funding, volume = {}, {}, {}
-    for coin, (instrument, index_name, _) in COINS.items():
+    noise = {}
+    for coin, (instrument, index_name, _, product) in COINS.items():
         print(f"fetching {instrument} up to {cutoff} (exclusive)", file=sys.stderr)
         rates = fh.fetch_deribit(session, instrument, FETCH_START, cutoff)
         perp = pp.fetch_perp_hourly(session, instrument, FETCH_START, cutoff)
         index = pp.fetch_index(session, index_name, cutoff)
+        spot = pp.fetch_coinbase_hourly(session, product, FETCH_START, cutoff)
         fh.write(rates, f"deribit-{coin}")
         pp.write(perp.set_index("time"), f"perp-{coin}")
         pp.write(index.set_index("time"), f"index-{coin}")
+        pp.write(spot.set_index("time"), f"coinbase-{coin}")
         funding[coin] = fh.daily_funding(rates)
-        prices = pp.day_end_prices(perp, index)
+        window = (reg["current_regime_start"], pd.Timestamp(cutoff) - pd.Timedelta(days=1))
+        old = pp.basis_noise_pct(pp.day_end_prices(perp, index), *window)
+        prices = pp.day_end_prices(perp, pp.spot_as_index(spot))
+        noise[coin] = pp.basis_noise_pct(prices, *window)
+        print(f"{coin} basis noise over the training window: {noise[coin]:.3f}% with Coinbase spot, "
+              f"{old:.3f}% with the six-hourly index", file=sys.stderr)
         ratio[coin] = prices["ratio"]
         daily_volume = perp.set_index("time")["usd_volume"].resample("D").sum()
         volume[coin] = daily_volume[daily_volume.index >= pd.Timestamp(reg["current_regime_start"], tz="UTC")].mean()
         gaps(funding[coin], f"{coin} funding")
         gaps(ratio[coin], f"{coin} price ratio")
+
+    failed = {c: v for c, v in noise.items() if not v < MAX_BASIS_NOISE_PCT}
+    if failed:
+        raise SystemExit(
+            f"the Coinbase spot leg fails the amendment's acceptance test ({failed}, limit "
+            f"{MAX_BASIS_NOISE_PCT}%); per the registration the change is rejected and the "
+            f"first run's result stands. Nothing evaluated, nothing recorded.")
+    print(f"acceptance test passed on both coins (limit {MAX_BASIS_NOISE_PCT}%)", file=sys.stderr)
 
     last = pd.Timestamp(cutoff) - pd.Timedelta(days=2)
     calendar = archive.trading_days(start=FETCH_START, end=last)

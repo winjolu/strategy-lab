@@ -157,3 +157,103 @@ class DayEnd(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CoinbaseSession:
+    """Like the real endpoint: both ends inclusive, newest candle first, at
+    most 300 per reply, rows as [time_s, low, high, open, close, volume]."""
+
+    def __init__(self, drop=(), extra=0):
+        self.calls, self.drop, self.extra = [], set(drop), extra
+
+    def request(self, method, url, headers=None, timeout=None, params=None, json=None):
+        self.calls.append(params)
+        lo = int(pd.Timestamp(params["start"]).timestamp())
+        hi = int(pd.Timestamp(params["end"]).timestamp()) + self.extra * 3600
+        rows = [[t, 1.0, 2.0, 1.5, 100.0 + (t * 1000 - T0) // HOUR, 7.0]
+                for t in range(lo, hi + 1, 3600) if t * 1000 not in self.drop]
+        assert len(rows) <= 300 + self.extra
+        return Resp(200, list(reversed(rows)))
+
+
+class Coinbase(unittest.TestCase):
+    def test_pages_neither_overlap_nor_leave_a_gap(self):
+        s = CoinbaseSession()
+        frame = pp.fetch_coinbase_hourly(s, "BTC-USD", "2024-01-01", "2024-03-01", **NOWAIT)
+        self.assertGreater(len(s.calls), 2)
+        self.assertEqual(len(frame), 60 * 24)
+        self.assertTrue((frame["time"].diff().dropna() == pd.Timedelta(hours=1)).all())
+
+    def test_nothing_is_requested_at_or_past_the_cutoff(self):
+        s = CoinbaseSession()
+        frame = pp.fetch_coinbase_hourly(s, "BTC-USD", "2024-01-01", "2024-01-20", **NOWAIT)
+        cutoff = pd.Timestamp("2024-01-20", tz="UTC")
+        self.assertTrue(all(pd.Timestamp(c["end"]) < cutoff for c in s.calls))
+        self.assertEqual(frame["time"].max(), pd.Timestamp("2024-01-19 23:00", tz="UTC"))
+
+    def test_a_reply_reaching_past_the_cutoff_is_cut_anyway(self):
+        frame = pp.fetch_coinbase_hourly(CoinbaseSession(extra=5), "BTC-USD",
+                                         "2024-01-01", "2024-01-05", **NOWAIT)
+        self.assertLess(frame["time"].max(), pd.Timestamp("2024-01-05", tz="UTC"))
+
+    def test_overlapping_pages_are_refused(self):
+        with self.assertRaises(fh.FetchFailed):
+            pp.fetch_coinbase_hourly(CoinbaseSession(extra=1), "BTC-USD",
+                                     "2024-01-01", "2024-02-01", **NOWAIT)
+
+    def test_an_error_body_is_a_failure(self):
+        class Bad:
+            def request(self, *a, **k):
+                return Resp(200, {"message": "NotFound"})
+        with self.assertRaises(fh.FetchFailed):
+            pp.fetch_coinbase_hourly(Bad(), "BTC-USD", "2024-01-01", "2024-01-02", **NOWAIT)
+
+    def test_an_empty_object_is_a_failure_not_an_empty_history(self):
+        class Bad:
+            def request(self, *a, **k):
+                return Resp(200, {})
+        with self.assertRaises(fh.FetchFailed):
+            pp.fetch_coinbase_hourly(Bad(), "BTC-USD", "2024-01-01", "2024-01-02", **NOWAIT)
+
+    def test_a_malformed_row_is_a_failure(self):
+        class Bad:
+            def request(self, *a, **k):
+                return Resp(200, [[1, 2, 3]])
+        with self.assertRaises(fh.FetchFailed):
+            pp.fetch_coinbase_hourly(Bad(), "BTC-USD", "2024-01-01", "2024-01-02", **NOWAIT)
+
+    def test_the_close_is_taken_not_the_open(self):
+        frame = pp.fetch_coinbase_hourly(CoinbaseSession(), "BTC-USD", "2024-01-01", "2024-01-02", **NOWAIT)
+        self.assertEqual(frame["close"].iloc[0], 100.0)
+
+    def test_as_the_index_the_23h_close_is_the_price_at_midnight(self):
+        spot = pp.fetch_coinbase_hourly(CoinbaseSession(), "BTC-USD", "2024-01-01", "2024-01-10", **NOWAIT)
+        perp = pp.fetch_perp_hourly(ChartSession(), "BTC-PERPETUAL", "2024-01-01", "2024-01-10", **NOWAIT)
+        out = pp.day_end_prices(perp, pp.spot_as_index(spot))
+        d = pd.Timestamp("2024-01-02")
+        # both legs read the close of the 23:00 candle on Jan 2, hour index 47
+        self.assertEqual(out.loc[d, "index"], 147.0)
+        self.assertEqual(out.loc[d, "perp"], 147.0)
+        self.assertAlmostEqual(out.loc[d, "ratio"], 1.0)
+
+    def test_a_missing_23h_candle_leaves_the_day_missing(self):
+        gone = T0 + 47 * HOUR
+        spot = pp.fetch_coinbase_hourly(CoinbaseSession(drop=[gone]), "BTC-USD",
+                                        "2024-01-01", "2024-01-10", **NOWAIT)
+        perp = pp.fetch_perp_hourly(ChartSession(), "BTC-PERPETUAL", "2024-01-01", "2024-01-10", **NOWAIT)
+        out = pp.day_end_prices(perp, pp.spot_as_index(spot))
+        self.assertTrue(pd.isna(out.loc[pd.Timestamp("2024-01-02"), "ratio"]))
+
+
+class BasisNoise(unittest.TestCase):
+    def test_it_is_the_spread_of_the_basis_in_the_window_in_percent(self):
+        idx = pd.date_range("2024-01-01", periods=6, freq="D")
+        prices = pd.DataFrame({"ratio": [1.0, 1.01, 0.99, 1.01, 0.99, 5.0]}, idx)
+        got = pp.basis_noise_pct(prices, "2024-01-01", "2024-01-05")
+        self.assertAlmostEqual(got, pd.Series([0.0, 1.0, -1.0, 1.0, -1.0]).std(ddof=1), places=9)
+
+    def test_missing_days_are_ignored_not_zeroed(self):
+        idx = pd.date_range("2024-01-01", periods=4, freq="D")
+        prices = pd.DataFrame({"ratio": [1.01, float("nan"), 0.99, 1.01]}, idx)
+        got = pp.basis_noise_pct(prices, "2024-01-01", "2024-01-04")
+        self.assertAlmostEqual(got, pd.Series([1.0, -1.0, 1.0]).std(ddof=1), places=9)

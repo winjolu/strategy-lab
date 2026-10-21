@@ -29,6 +29,8 @@ from lab.data.funding_history import FetchFailed, _ms, _request
 
 CHART = "https://www.deribit.com/api/v2/public/get_tradingview_chart_data"
 INDEX_CHART = "https://www.deribit.com/api/v2/public/get_index_chart_data"
+COINBASE = "https://api.exchange.coinbase.com/products/{product}/candles"
+COINBASE_PAGE_HOURS = 300  # the most candles one Coinbase request returns
 CHUNK_DAYS = 30            # 720 hourly candles per request
 CALLS_PER_SECOND = 4.0
 HOUR_MS = 3_600_000
@@ -90,6 +92,58 @@ def fetch_index(session, name, cutoff, sleep=time.sleep):
         raise FetchFailed("two index values for the same instant")
     frame["index_name"] = name
     return frame.reset_index(drop=True)
+
+
+def fetch_coinbase_hourly(session, product, start, cutoff, sleep=time.sleep, pace=None):
+    """Hourly candles for one Coinbase Exchange product, such as BTC-USD,
+    from `start` up to, not including, `cutoff`. `time` is the candle's
+    start; `close` is the last trade in that hour.
+
+    Both ends of a Coinbase request are inclusive, so pages of 300 hours
+    starting 300 hours apart neither overlap nor leave a gap. An hour with no
+    trades has no candle and stays missing.
+    """
+    rows, lo = [], pd.Timestamp(_ms(start), unit="ms", tz="UTC").ceil("h")
+    last = pd.Timestamp(_ms(cutoff), unit="ms", tz="UTC").ceil("h") - pd.Timedelta(hours=1)
+    url = COINBASE.format(product=product)
+    while lo <= last:
+        hi = min(lo + pd.Timedelta(hours=COINBASE_PAGE_HOURS - 1), last)
+        body = _request(session, "GET", url, sleep=sleep, params={
+            "granularity": 3600, "start": lo.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "end": hi.strftime("%Y-%m-%dT%H:%M:%SZ")})
+        if not isinstance(body, list):
+            raise FetchFailed(f"Coinbase answered without candles: {str(body)[:120]}")
+        for row in body:
+            if not isinstance(row, list) or len(row) < 6:
+                raise FetchFailed(f"Coinbase candle has an unexpected shape: {str(row)[:80]}")
+            rows.append((row[0] * 1000, row[4], row[5]))
+        lo = hi + pd.Timedelta(hours=1)
+        (pace or sleep)(1.0 / CALLS_PER_SECOND)
+    frame = pd.DataFrame(rows, columns=["time", "close", "volume"])
+    frame["time"] = pd.to_datetime(frame["time"], unit="ms", utc=True)
+    frame = _cut(frame, cutoff).sort_values("time")
+    if frame["time"].duplicated().any():
+        raise FetchFailed("two Coinbase candles for the same hour; the pages overlapped")
+    frame["product"] = product
+    return frame.reset_index(drop=True)
+
+
+def spot_as_index(spot_hourly):
+    """Spot candles in the shape `day_end_prices` reads as the index: each
+    close stamped at the instant it describes, the end of its hour. The close
+    of the 23:00 candle on day `d` is then the spot price at 00:00 on `d + 1`,
+    the same convention as the perpetual's price."""
+    out = spot_hourly[["time", "close"]].rename(columns={"close": "index_price"})
+    out = out.assign(time=out["time"] + pd.Timedelta(hours=1))
+    return out.reset_index(drop=True)
+
+
+def basis_noise_pct(prices, start, end):
+    """Standard deviation of the basis level, spot over perpetual minus one,
+    at day ends from `start` to `end` inclusive, in percent. The registration's
+    acceptance test for a spot series; it reads no return."""
+    window = prices.loc[pd.Timestamp(start):pd.Timestamp(end), "ratio"].dropna()
+    return float((window - 1.0).std(ddof=1) * 100.0)
 
 
 def day_end_prices(perp_hourly, index):
