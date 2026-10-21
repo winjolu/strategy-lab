@@ -49,6 +49,11 @@ stay honest.
   registration. By the registered letter it ends the strategy, but its spot leg
   is an index served every six hours with an undocumented stamp, and the
   volatility it implies is five to ten times a hedge's. No verdict is recorded.
+- Re-measured under a pre-committed amendment with Coinbase spot, which cut the
+  basis noise from 0.64% to 0.04% on BTC and from 0.84% to 0.04% on ETH, the
+  decision book's training-window active Sharpe is 2.17, on an active return of
+  1.67% a year over bills. The kill criterion does not fire; the holdout is
+  next, read once.
 
 ## 2026-10-05
 

@@ -308,6 +308,48 @@ series that scores best.
 criterion is read on that run. Both runs stay recorded, the new one is a
 counted trial, and the verdict names both run ids.
 
+### Stage 1 re-measured, run 2026-10-21 (training window only; the holdout was never requested)
+
+Runs: `900fdbd900944fd9aa583555f63a038e` (threshold, the decision book) and
+`bf764326c76349669c22f33ba2421fc2` (always-on).
+
+**Acceptance test: passed.** Basis noise over the training window was 0.037%
+on BTC and 0.040% on ETH with Coinbase spot, against 0.638% and 0.837% with
+the six-hourly index, and a limit of 0.25%. The index series was the cause of
+the volatility the first run measured.
+
+**One departure from the amendment, context only.** Coinbase has no 23:00
+candle on 2020-09-04 for one of the coins, so the unbroken run of complete rows
+starts on 2020-09-09 rather than 2020-08-28: 1,270 rows instead of 1,277. The
+training window is unaffected.
+
+**What was measured, training window, 751 rows.** Decision book (threshold),
+net of 0.15% per side: active Sharpe 2.17, provisional tier clear; active return
+1.67% a year over Treasury bills; before slippage, higher. Always-on: 0.84,
+below the floor, active return 1.05% a year. Absolute Sharpe over the whole
+sample 5.25 on the decision book, with a worst day of minus 0.37% and a maximum
+drawdown of 1.22%. Context t on the decision book 3.99, a flag. Deflated Sharpe
+over the family's four trials 1.00; over the lab's eight, 0.00, because the
+lab-wide dispersion comes from an equity family whose daily Sharpes are on a
+different scale, so the lab-wide figure says little here.
+
+**Prediction, rescored on this run.** The volatility and absolute-Sharpe
+predictions that failed on the first run were right here: the absolute Sharpe
+exceeds 2. Wrong now: the central expectation of a training score below the
+floor. The rest stands as scored above.
+
+**What this does and does not establish.** The kill criterion does not fire,
+so the strategy goes to Stage 3, where the holdout is read once and the pooled
+score decides its tier. The return being scored is small, under 2% a year over
+bills in the training window, and steady, and the risk the registration names
+as dominant, a venue failing or suspending withdrawals, is absent from any
+history a surviving venue serves. The score cannot speak to that. The pass also
+follows a change of measurement made after a low first result; the change was
+fixed before the new data was fetched and accepted on a test that reads no
+return, which is what the amendment above records. And the account still cannot
+trade the venue tested, so a clear pooled score earns no paper slot until one
+it can trade is found.
+
 ## Variants
 
 Every variant is a trial for deflation. One change at a time, the economic
