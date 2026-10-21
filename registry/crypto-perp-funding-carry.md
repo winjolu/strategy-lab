@@ -350,6 +350,14 @@ return, which is what the amendment above records. And the account still cannot
 trade the venue tested, so a clear pooled score earns no paper slot until one
 it can trade is found.
 
+### Stage 3 holdout end, fixed 2026-10-21 before the read
+
+The holdout is read through 2026-10-09 and no further. The archive holds about
+30 bars for each of 2026-10-12 and 2026-10-13 against about 6,300 on other
+days, and BIL has no bar on either, so a later end would put a gap inside the
+cash column. Through 2026-10-09 the holdout holds 258 equity trading days, above
+the 252 its score needs. The fetch cutoff is 2026-10-12, exclusive.
+
 ## Variants
 
 Every variant is a trial for deflation. One change at a time, the economic

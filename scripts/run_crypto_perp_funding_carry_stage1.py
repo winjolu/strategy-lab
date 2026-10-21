@@ -52,7 +52,7 @@ def gaps(daily, label):
           file=sys.stderr)
 
 
-def cross_check(session, cutoff, deribit_daily, training_start):
+def cross_check(session, cutoff, deribit_daily, training_start, holdout):
     """Mean annualised daily funding, Hyperliquid against Deribit, over the
     training days both venues have complete. A flag, not a trial."""
     print("\n=== Hyperliquid cross-check (flag; funding only, no basis) ===", file=sys.stderr)
@@ -61,7 +61,7 @@ def cross_check(session, cutoff, deribit_daily, training_start):
         frame = fh.fetch_hyperliquid(session, hl, HYPERLIQUID_START, cutoff)
         hl_daily = fh.daily_funding(frame)
         both = pd.concat({"hl": hl_daily, "deribit": deribit_daily[coin]}, axis=1).dropna()
-        both = both[both.index >= pd.Timestamp(training_start)]
+        both = both[(both.index >= pd.Timestamp(training_start)) & (both.index < pd.Timestamp(holdout))]
         apr = both.mean() * strat.FUNDING_DAYS_PER_YEAR * 100.0
         lines.append(f"{coin.upper()}: {len(both)} common days, Hyperliquid {apr['hl']:.2f}% a year, "
                      f"Deribit {apr['deribit']:.2f}% a year, difference {apr['hl'] - apr['deribit']:.2f} points")
@@ -75,11 +75,17 @@ def main():
     p.add_argument("--produced-by", required=True,
                    help="who ran this, for the results database; never hardcoded here")
     p.add_argument("--effort", required=True)
+    p.add_argument("--stage", type=int, choices=(1, 3), default=1,
+                   help="3 reads the holdout, once; the pipeline refuses a second read")
+    p.add_argument("--through", help="Stage 3 only: fetch cutoff, exclusive, YYYY-MM-DD")
     args = p.parse_args()
+    if (args.stage == 3) != bool(args.through):
+        p.error("--through is required at Stage 3 and refused at Stage 1")
 
     spec = require_registered(STRATEGY_ID)
     reg = spec["registration"]
-    cutoff = reg["holdout_start"]
+    holdout = reg["holdout_start"]
+    cutoff = args.through if args.stage == 3 else holdout
     session = requests.Session()
     archive = default_archive()
 
@@ -96,7 +102,7 @@ def main():
         pp.write(index.set_index("time"), f"index-{coin}")
         pp.write(spot.set_index("time"), f"coinbase-{coin}")
         funding[coin] = fh.daily_funding(rates)
-        window = (reg["current_regime_start"], pd.Timestamp(cutoff) - pd.Timedelta(days=1))
+        window = (reg["current_regime_start"], pd.Timestamp(holdout) - pd.Timedelta(days=1))
         old = pp.basis_noise_pct(pp.day_end_prices(perp, index), *window)
         prices = pp.day_end_prices(perp, pp.spot_as_index(spot))
         noise[coin] = pp.basis_noise_pct(prices, *window)
@@ -142,12 +148,13 @@ def main():
     inputs.returns, inputs.funding, inputs.benchmark = (
         inputs.returns.loc[first:], inputs.funding.loc[first:], inputs.benchmark.loc[first:])
     print(f"evaluated rows {inputs.returns.index.min():%Y-%m-%d} .. {inputs.returns.index.max():%Y-%m-%d} "
-          f"({len(inputs.returns)} rows); holdout {cutoff} unseen", file=sys.stderr)
+          f"({len(inputs.returns)} rows); "
+          + (f"holdout from {holdout} read, once" if args.stage == 3 else f"holdout {holdout} unseen"), file=sys.stderr)
     for coin, v in volume.items():
         print(f"{coin.upper()} perpetual average daily dollar volume since "
               f"{reg['current_regime_start']}: ${v:,.0f}", file=sys.stderr)
 
-    check = cross_check(session, cutoff, funding, reg["current_regime_start"])
+    check = cross_check(session, cutoff, funding, reg["current_regime_start"], holdout)
 
     manifest = json.dumps(archive_properties.report(archive_properties.run(archive)), default=str)
     db = default_db()
@@ -155,9 +162,9 @@ def main():
         STRATEGY_ID, inputs.weights_by_sizing, inputs.returns, inputs.benchmark, db,
         produced_by=args.produced_by, effort=args.effort, data_manifest=manifest,
         binding_constraint=BINDING_CONSTRAINT, base_cost=costs.CostModel(reg["decision_slippage_pct"]),
-        funding=inputs.funding, execution=EXECUTION, stage=1)
+        funding=inputs.funding, execution=EXECUTION, stage=args.stage)
     text = report.render(ev) + "\n\nCross-check (flag):\n" + "\n".join(check) + "\n"
-    path = pipeline.write_report(text, STRATEGY_ID, stage=1)
+    path = pipeline.write_report(text, STRATEGY_ID, stage=args.stage)
     print(f"wrote {path}", file=sys.stderr)
     print(text)
 
