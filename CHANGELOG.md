@@ -15,6 +15,10 @@ stay honest.
 ## [Unreleased]
 
 ### Added
+- The registration of `overnight-index-hold`, under rule set v2 and before any
+  overnight or intraday return was computed: SPY bought at the close and sold at
+  the next open, against SPY held all day. The prediction is a Stage 1 kill. The
+  draft it came from is removed.
 - The registration of `crypto-perp-funding-carry`, under rule set v2 and
   before any of its data was fetched for analysis. It holds BTC or ETH on
   Deribit as the collateral for a short of the same dollar amount of the

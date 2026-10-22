@@ -80,13 +80,15 @@ Ranked by information gained per day of work, not by claimed return.
    spot, accepted only if the basis noise falls below 0.25% on both coins; if
    not, the kill stands. Recorded in the registration.
 2. **`overnight-index-hold` — SPY held only from the close to the next open.**
-   Queued 2026-10-21, after the funding carry's re-measurement. Draft
-   registration in `docs/drafts/overnight-index-hold.md`, written before any
-   look; it is registered by moving it to `registry/` and committing. Before
-   that: send its three citations to the methods-review literature check, and
-   settle the three points the draft lists (the ex-dividend open, intraday cash,
-   and a close-to-open return convention the engine does not have yet). The
-   run is void if the archive's opens disagree with the broker's on more than
+   **Registered 2026-10-22** (`registry/overnight-index-hold.md`, rule set v2),
+   before any overnight or intraday return was computed. Its three citations
+   went to the methods-review literature check the same day; if the published
+   effect sizes differ from the ones recalled, the prediction is amended before
+   any run. Settled at registration: the dividend is credited to the ex-date
+   night, intraday money is cash at zero, and the volatility-targeted size uses
+   data through the previous night. **Next, routine build:** a close-to-open
+   return frame with its own look-ahead test, the opening-price check against
+   the broker's bars, the strategy module and the runner. The run is void if the archive's opens disagree with the broker's on more than
    1% of 250 sampled dates per ticker. Expected to be killed at Stage 1; it is
    queued because it is cheap and answers whether intraday SPY has earned
    anything.

@@ -25,7 +25,7 @@ written before the run got one thing wrong (see `registry/`).
 | | |
 |---|---|
 | Candidate strategies catalogued | 41, ranked by information gained per day of work |
-| Strategies registered (prediction and kill criteria fixed before any run) | 3 |
+| Strategies registered (prediction and kill criteria fixed before any run) | 4 |
 | Strategies tested at Stage 1 | 1, killed |
 | Tests | 428 |
 | Guards deliberately broken to prove the tests notice | 229, all caught |
@@ -155,7 +155,7 @@ the exchange's public API and needs no credentials.
 ## Where to start reading
 
 - `QUEUE.md`: what happens next and why it is in that order
-- `registry/`: the three registered strategies, prediction and kill criteria included
+- `registry/`: the four registered strategies, prediction and kill criteria included
 - `docs/reviews/cost-model-2026-09-23.md`: how the cost model was broken and fixed
 - `docs/kalshi-survey.md`: what the exchange's API serves, and the fee check
 - `docs/account.md`: the account constraints every report must name
