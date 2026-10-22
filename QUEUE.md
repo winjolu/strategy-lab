@@ -91,7 +91,24 @@ Ranked by information gained per day of work, not by claimed return.
    queued because it is cheap and answers whether intraday SPY has earned
    anything.
 
-3. **Build the Compustat-to-Sharadar field map for the 23 OSAP entries.** The
+3. **Paper-trading capability, lab-wide.** Decided 2026-10-21. Nothing in the
+   lab can paper trade yet, and the evaluation rules make it the step between a
+   clear score and money: it measures whether fills match the assumed costs,
+   under a stop rule written before it starts. Needs a forward ledger of
+   intended and simulated fills per strategy, a record of the quotes each fill
+   was priced from, a daily reconciliation against the backtest's assumed cost,
+   and the stop rule as a registered field. Venue-agnostic, so equities and
+   Kalshi perpetuals share it.
+4. **Paper trade `crypto-perp-funding-carry` on Kalshi's BTC perpetual.**
+   Decided 2026-10-21, as a test of fills and costs, not of the edge: Kalshi's
+   own funding history is 4.5 months and cannot be scored before mid-2027
+   (`docs/perp-funding-survey.md`). Before it starts: Kalshi's perpetual fee
+   schedule and the broker's spot cost, the perpetuals access application (a
+   person), and a registered stop rule. The hedge there is dollar-margined with
+   the coin at another venue, so the paper record has to track margin and the
+   liquidation distance, which the Deribit test never needed.
+
+5. **Build the Compustat-to-Sharadar field map for the 23 OSAP entries.** The
    catalogue's claim that 29 entries are testable today rests on an unverified
    assumption that this archive carries the accounting fields the OSAP
    definitions name. Until the map exists, that count means nothing.
@@ -99,7 +116,7 @@ Ranked by information gained per day of work, not by claimed return.
    against the 112 columns of `fundamentals`.
    Routine work, gates the next item and any OSAP entry.
 
-4. **Value-weighting versus equal-weighting across three OSAP entries.** A
+6. **Value-weighting versus equal-weighting across three OSAP entries.** A
    methodology test rather than a strategy, and the highest-value single day in
    the catalogue: it plausibly eliminates half the equity set.
    Depends on the field map above.
