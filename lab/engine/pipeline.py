@@ -146,7 +146,8 @@ def _guard_benchmark(reg, returns, benchmark):
 def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by,
              effort, data_manifest, binding_constraint, base_cost,
              spy=None, book=None, stage=1, lag=1, on_missing="raise",
-             registry_directory=None, today=None, execution=None, funding=None):
+             registry_directory=None, today=None, execution=None, funding=None,
+             round_trip=False, run_label=None):
     spec = registry.require_registered(strategy_id, registry_directory, today=today)
     reg = spec["registration"]
     if not (binding_constraint or "").strip():
@@ -188,7 +189,7 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
 
     for name, weights in weights_by_sizing.items():
         probe = backtest.run(weights, returns, base_cost.with_(borrow_apr=0.0, margin_apr=0.0), lag, on_missing,
-                             funding=funding)
+                             funding=funding, round_trip=round_trip)
         models = costs.sweep(base_cost, probe.has_shorts, probe.max_long_gross > 1.0 + backtest.EXPOSURE_TOLERANCE,
                              margin_apr=base_cost.margin_apr,
                              slippage_sweep=reg.get("slippage_sweep_pct"))
@@ -209,6 +210,7 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
              "ruleset": version, "execution": execution, "funding": funding is not None,
              "cell": [head.slippage_pct, head.borrow_apr], "decides": decides,
              "on_missing": on_missing, "base_cost": vars(base_cost),
+             "round_trip": round_trip, "label": run_label,
              "sweep": [vars(m) for m in models]},
             produced_by, effort, data_manifest=data_manifest,
         )
@@ -222,7 +224,7 @@ def evaluate(strategy_id, weights_by_sizing, returns, benchmark, db, produced_by
 
         sweep_rows, head_bt = [], None
         for m in models:
-            bt = backtest.run(weights, returns, m, lag, on_missing, funding=funding)
+            bt = backtest.run(weights, returns, m, lag, on_missing, funding=funding, round_trip=round_trip)
             s = stats.summarise(bt.net, benchmark)
             sweep_rows.append({"slippage_pct": m.slippage_pct, "borrow_apr": m.borrow_apr,
                                "active_t": s["active_t_newey_west"], "band": s["band"],

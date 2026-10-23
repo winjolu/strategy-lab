@@ -90,3 +90,66 @@ def test_open_to_open_produces_nan_across_a_gap_rather_than_bridging_it():
     out = returns.open_to_open(b)
     assert np.isnan(out["A"].iloc[0])
     assert np.isnan(out["A"].iloc[1])
+
+
+def test_close_to_open_is_the_night_ending_at_that_dates_open():
+    b = bars([{"A": (10, 10, 10)}, {"A": (10.5, 11, 11)}, {"A": (11.55, 12, 12)}])
+    out = returns.close_to_open(b)
+    assert len(out) == 2
+    assert out["A"].iloc[0] == pytest.approx(10.5 / 10 - 1)
+    assert out["A"].iloc[1] == pytest.approx(11.55 / 11 - 1)
+
+
+def test_close_to_open_credits_the_dividend_to_the_ex_date_night():
+    """Raw: close 10 on day 1, opens 9.8 on the ex-date after a 0.2 dividend,
+    closes 9.8. Back-adjusted, day 1's closeadj is 9.8 and the ex-date's is
+    9.8, so the night is flat on the total-return basis, not a 2% loss."""
+    b = bars([{"A": (10, 10, 9.8)}, {"A": (9.8, 9.8, 9.8)}])
+    out = returns.close_to_open(b)
+    assert out["A"].iloc[0] == pytest.approx(0.0)
+    # a later dividend leaves both days' closeadj below close (factor 0.99);
+    # the open has to be carried onto that basis or the night shows +1%
+    b = bars([{"A": (10, 10, 9.702)}, {"A": (9.8, 9.8, 9.702)}])
+    out = returns.close_to_open(b)
+    assert out["A"].iloc[0] == pytest.approx(0.0)
+
+
+def test_night_and_day_compound_to_the_close_to_close_return():
+    rows = [{"A": (10, 10, 9.9)}, {"A": (10.3, 10.1, 10.0)}, {"A": (9.7, 10.4, 10.4)}]
+    b = bars(rows)
+    night, day, whole = returns.close_to_open(b), returns.open_to_close(b), returns.close_to_close(b)
+    joined = (1 + night["A"]) * (1 + day["A"].loc[night.index]) - 1
+    assert np.allclose(joined.values, whole["A"].values)
+
+
+def test_close_to_open_is_nan_across_a_missing_bar():
+    rows = [{"A": (10, 10, 10), "B": (5, 5, 5)}, {"B": (5, 5, 5)}, {"A": (11, 11, 11), "B": (5, 5, 5)}]
+    idx = pd.bdate_range("2024-01-02", periods=3)
+    out = []
+    for d, row in zip(idx, rows):
+        for t, (o, c, ca) in row.items():
+            out.append({"ticker": t, "date": d, "open": o, "close": c, "closeadj": ca})
+    got = returns.close_to_open(pd.DataFrame(out))
+    assert got["A"].isna().all()
+
+
+def test_close_to_open_refuses_a_missing_column():
+    b = bars([{"A": (10, 10, 10)}, {"A": (11, 11, 11)}])
+    with pytest.raises(ValueError, match="open"):
+        returns.close_to_open(b.drop(columns=["open"]))
+
+
+def test_a_signal_built_from_tonights_return_earns_nothing_once_lagged():
+    """The decision is dated at a close and the night it is paid starts at
+    that close. A rule that peeks at the night it is paid must not profit
+    once the engine lags it one row."""
+    from lab.engine import backtest, costs
+    rng = np.random.default_rng(0)
+    n = 2000
+    idx = pd.bdate_range("2010-01-04", periods=n)
+    night = pd.DataFrame({"A": rng.normal(0, 0.01, n)}, idx)
+    peek = (night > 0).astype(float)            # knows the row it would be paid
+    bt = backtest.run(peek, night, costs.CostModel(0.0))
+    assert abs(bt.net.mean()) < 3 * night["A"].std() / np.sqrt(n)
+    cheat = (peek * night).sum(axis=1)
+    assert cheat.mean() > 0.003                 # the same rule, unlagged, would print money

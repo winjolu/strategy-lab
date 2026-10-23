@@ -114,7 +114,7 @@ def _funding_cost(funding, held, index, columns):
     return (held * rate.fillna(0.0)).sum(axis=1)
 
 
-def run(weights, returns, cost, lag=1, on_missing="raise", funding=None):
+def run(weights, returns, cost, lag=1, on_missing="raise", funding=None, round_trip=False):
     if lag < 1:
         raise LookaheadRisk("lag must be at least 1: a decision cannot earn its own day")
     if on_missing not in ("raise", "zero"):
@@ -162,7 +162,14 @@ def run(weights, returns, cost, lag=1, on_missing="raise", funding=None):
 
     gross = pd.Series((held_v * r).sum(axis=1), returns.index)
     previous = pd.DataFrame(drifted_v, returns.index, weights.columns).shift(1).fillna(0.0)
-    turnover = (held - previous).abs().sum(axis=1)
+    if round_trip:
+        # The book is closed out every row and opened again: bought at one
+        # close and sold at the next open. Each held row costs a buy and a
+        # sell of its whole position, whatever the weights did; a constant
+        # weight would otherwise look free.
+        turnover = 2.0 * held.abs().sum(axis=1)
+    else:
+        turnover = (held - previous).abs().sum(axis=1)
 
     days = pd.Series(returns.index, index=returns.index).diff().dt.days.fillna(1).clip(lower=1)
     short_gross = (-held.clip(upper=0)).sum(axis=1)

@@ -86,9 +86,11 @@ Ranked by information gained per day of work, not by claimed return.
    effect sizes differ from the ones recalled, the prediction is amended before
    any run. Settled at registration: the dividend is credited to the ex-date
    night, intraday money is cash at zero, and the volatility-targeted size uses
-   data through the previous night. **Next, routine build:** a close-to-open
-   return frame with its own look-ahead test, the opening-price check against
-   the broker's bars, the strategy module and the runner. The run is void if the archive's opens disagree with the broker's on more than
+   data through the previous night. **Built 2026-10-23, not yet run:** the
+   close-to-open frame and its look-ahead test, a round-trip cost mode, the
+   opening-price check, the strategy module and the runner. **Next:** export
+   the broker's daily bars for SPY, QQQ and IWM as the check's second source,
+   then run Stage 1 once. The run is void if the archive's opens disagree with the broker's on more than
    1% of 250 sampled dates per ticker. Expected to be killed at Stage 1; it is
    queued because it is cheap and answers whether intraday SPY has earned
    anything.

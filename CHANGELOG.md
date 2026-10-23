@@ -19,6 +19,12 @@ stay honest.
   overnight or intraday return was computed: SPY bought at the close and sold at
   the next open, against SPY held all day. The prediction is a Stage 1 kill. The
   draft it came from is removed.
+- The build behind it, not yet run: close-to-open and open-to-close return
+  conventions; a round-trip cost mode in the backtest that charges a buy and a
+  sell on every held row, because a book bought at each close and sold at each
+  open holds a constant weight that the change-based cost model would charge
+  nothing for; an opening-price check against a second source that counts an
+  unpriced date against the archive; the strategy module and runner.
 - The registration of `crypto-perp-funding-carry`, under rule set v2 and
   before any of its data was fetched for analysis. It holds BTC or ETH on
   Deribit as the collateral for a short of the same dollar amount of the

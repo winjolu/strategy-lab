@@ -391,3 +391,23 @@ class FundingThroughThePipeline(unittest.TestCase):
             self.assertNotEqual(a.headline["absolute_cagr_pct"], b.headline["absolute_cagr_pct"])
             self.assertTrue(all(x["active_pct_per_year"] != y["active_pct_per_year"]
                                 for x, y in zip(a.sweep, b.sweep)))
+
+
+class RoundTripAndLabel(unittest.TestCase):
+    def test_round_trip_costs_more_and_the_run_record_says_so(self):
+        d = tempfile.mkdtemp()
+        write_registration(d)
+        ret, bench = panel()
+        w = weights_for(ret)
+        base = dict(strategy_id="toy", weights_by_sizing=w, returns=ret, benchmark=bench,
+                    produced_by="analyst-a", effort="medium", data_manifest="synthetic",
+                    binding_constraint="settled cash", base_cost=costs.CostModel(0.25),
+                    registry_directory=d, today=TODAY)
+        plain = pipeline.evaluate(db=fresh_db(), **base)
+        db = fresh_db()
+        trip = pipeline.evaluate(db=db, round_trip=True, run_label="grid cell QQQ", **base)
+        cfg = db.run(trip.results[0].run_id)["config"]
+        self.assertTrue(cfg["round_trip"])
+        self.assertEqual(cfg["label"], "grid cell QQQ")
+        for a, b in zip(plain.results, trip.results):
+            self.assertGreater(b.turnover_annual, a.turnover_annual)

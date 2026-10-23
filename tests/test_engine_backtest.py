@@ -317,3 +317,29 @@ class Funding(unittest.TestCase):
         w, r = self.hedge()
         res = bt.run(w, r, CostModel(0.0, borrow_apr=0.0), funding=self.rate(1e-4))
         self.assertTrue(np.allclose(res.net, res.gross - res.costs.sum(axis=1)))
+
+
+def test_a_round_trip_book_pays_two_sides_on_every_held_row():
+    import numpy as np
+    import pandas as pd
+    from lab.engine import backtest, costs
+    idx = pd.bdate_range("2024-01-02", periods=6)
+    r = pd.DataFrame({"A": 0.0}, idx)
+    w = pd.DataFrame({"A": [1.0, 1.0, 0.5, 0.5, 0.0, 0.0]}, idx)
+    plain = backtest.run(w, r, costs.CostModel(0.01))
+    trip = backtest.run(w, r, costs.CostModel(0.01), round_trip=True)
+    held = trip.held["A"]
+    assert np.allclose(trip.turnover.values, 2.0 * held.abs().values)
+    assert np.allclose(trip.costs["slippage"].values, 2.0 * held.abs().values * 0.01 / 100)
+    assert plain.turnover.sum() < trip.turnover.sum()      # a constant weight is not free
+    assert trip.annual_turnover > 0
+
+
+def test_round_trip_leaves_a_flat_row_free():
+    import pandas as pd
+    from lab.engine import backtest, costs
+    idx = pd.bdate_range("2024-01-02", periods=4)
+    r = pd.DataFrame({"A": 0.0}, idx)
+    w = pd.DataFrame({"A": 0.0}, idx)
+    trip = backtest.run(w, r, costs.CostModel(0.01), round_trip=True)
+    assert (trip.turnover == 0).all()

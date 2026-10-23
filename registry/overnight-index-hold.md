@@ -97,12 +97,26 @@ which the futures data purchase in the queue would unblock.
 conventions and the draft this registration came from. No overnight or
 intraday return was computed, and no price series was read.
 
-## What has to be built before Stage 1
+## Build state
 
-- The close-to-open return frame and its look-ahead test.
-- The opening-price check against the broker's bars.
-- The strategy module (both sizing rules and the cash leg) and its runner, with
-  the grid over SPY, QQQ and IWM counted as trials.
+Built 2026-10-23, not yet run: the close-to-open and open-to-close return
+conventions (`lab/engine/returns.py`) with a test that a rule reading the night
+it is paid earns nothing once lagged; a round-trip cost mode in the backtest,
+which charges a buy and a sell on every held night, since a constant weight
+would otherwise look free; the opening-price check (`lab/checks/open_prices.py`);
+the strategy module and the runner (`scripts/run_overnight_index_hold_stage1.py`).
+Every new guard was broken once; two mutations were equivalent and changed
+nothing a test could see.
+
+Not built: the share of the overnight return from earnings and macro-news
+nights. The archive holds no macro release calendar, and the report says the
+figure is not computed rather than estimating it from a list recalled from
+memory.
+
+Before the run: the broker's daily bars for SPY, QQQ and IWM, written to a CSV
+of `ticker,date,open`, as the check's second source. The check samples from
+the earliest date that source covers, so a shallow source checks fewer years
+but cannot pass by omission: an unpriced date counts against it.
 
 ## Binding constraint
 

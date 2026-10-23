@@ -53,3 +53,34 @@ def open_to_open(bars):
     with np.errstate(divide="ignore", invalid="ignore"):
         forward = wide.shift(-1) / wide - 1.0
     return forward.iloc[:-1]
+
+
+def _adjusted(bars):
+    missing = [c for c in ("open", "close", "closeadj") if c not in bars.columns]
+    if missing:
+        raise ValueError(f"this convention needs {missing} in the bars frame")
+    return bars.assign(adj_open=bars["open"] * bars["closeadj"] / bars["close"])
+
+
+def close_to_open(bars):
+    """The night's return, trailing: the value at date d is the adjusted open
+    of d over the adjusted close of the previous trading day, minus one.
+
+    A decision dated t, applied with `lag=1`, lands on row t+1: bought at the
+    close of t and sold at the open of t+1. On an ex-dividend date the raw open
+    falls by the dividend; on the `closeadj` basis the dividend is credited to
+    the night it is earned, as the total return of the day is. The first row
+    has no previous close and is dropped; a missing bar on either side gives
+    NaN, never a return that bridges the gap.
+    """
+    adjusted = _adjusted(bars)
+    opens = _pivot(adjusted, "adj_open")
+    closes = _pivot(adjusted, "closeadj")
+    return (opens / closes.shift(1) - 1.0).iloc[1:]
+
+
+def open_to_close(bars):
+    """The day's return from the open to the close of the same date. With
+    `close_to_open` it compounds to `close_to_close` exactly."""
+    adjusted = _adjusted(bars)
+    return _pivot(adjusted, "closeadj") / _pivot(adjusted, "adj_open") - 1.0
