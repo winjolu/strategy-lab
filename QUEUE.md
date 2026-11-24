@@ -10,13 +10,15 @@ Last reconciled against disk: 2026-09-23.
 
 ## 1. Blocked on outside action
 
-- **Schwab Trader API key.** Blocks: every options entry, and the only route to
-  options history at retail depth. Unblocks `vrp-short-vol` and the four to five
-  options candidates the catalogue says are missing. Not yet needed — raise it
-  again when options work is next in the queue. Verify on arrival whether the
-  advertised ~15 years of equity and options history is actually served, and
-  note that Schwab carries no FX and no crypto, and futures quote-only with no
-  historical bars.
+- **Schwab developer app, not yet created (checked 2026-11-24).** Blocks every
+  options entry. Steps, all needing a person: register on developer.schwab.com,
+  request the Trader API for individuals, create an app with the Market Data
+  Production product only and the callback `https://127.0.0.1:8182`, and wait
+  for its status to read Ready For Use. Then the key, secret and callback go in
+  the shared secrets file, which holds blank placeholders today. Schwab serves
+  current option chains only, so this route gives options history only by
+  recording it forward; years of history would have to be bought. It also
+  carries no FX and no crypto, and futures quote-only with no historical bars.
 - **Futures data purchase, roughly $400-900/year (Norgate or CSI).** Blocks
   `futures-carry-carver10`, `futures-trend-ewmac`, and the five to eight further
   Carver strategies. The catalogue's own recommendation is that this is the
