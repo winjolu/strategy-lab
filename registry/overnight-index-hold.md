@@ -10,7 +10,7 @@ stage = 0
 [registration]
 registered_on = "2026-10-22"
 hypothesis = "SPY held only from the close to the next open earns about as much as SPY held all day, with roughly half the time exposed, because the US equity premium has been earned mostly overnight. Equivalently, SPY's open-to-close return is near zero or negative."
-economic_reason = "Holding through hours when the market is closed carries jump and illiquidity risk that is paid for. End-of-day selling by dealers and institutions reverses overnight (Boyarchenko et al.). Different investor groups trade at the open and at the close (Lou et al.)."
+economic_reason = "Holding through hours when the market is closed carries jump and illiquidity risk that is paid for. End-of-day selling absorbed by dealers reverses overnight (Boyarchenko et al.). Different investor groups trade at the open and at the close (Lou et al.)."
 prediction = "Written before any look. On the full archive, SPY's mean overnight return exceeds its mean intraday return. Published gaps are halved, per the shared rules. Over the training window the before-cost active return against SPY is near zero, because the training years were a strong market. At 0.01% per side the active Sharpe against SPY is below 1.0. Against BIL, the overnight book's Sharpe is positive but below buy-and-hold SPY's. My central expectation is a Stage 1 kill. The reason to run it anyway: it is cheap to test, and a clear result on whether intraday SPY has been dead money settles a question that shapes the core holding."
 universe = "SPY. Declared grid, each cell a counted trial: SPY, QQQ, IWM. The verdict reads SPY only."
 horizon = "Buy at the close, sell at the next open, every trading day. Cash, earning nothing, intraday."
@@ -96,6 +96,17 @@ which the futures data purchase in the queue would unblock.
 **Before writing this.** I read the shared method rules, the engine's return
 conventions and the draft this registration came from. No overnight or
 intraday return was computed, and no price series was read.
+
+**Amended 2026-11-24, before any run.** The literature check of 2026-10-25
+confirmed all three citations: Cliff, Cooper and Gulen (2008, subtitled "Like
+Night and Day"); Lou, Polk and Skouras, JFE 134(1), 2019; Boyarchenko, Larsen
+and Whelan, RFS 36(9), 2023. One wording change, in the economic reason: dealers
+absorb the closing sell imbalance rather than doing the selling. The same
+authors reported on 2026-07-01 ("The Disappearing Overnight Drift", Liberty
+Street Economics) that the 2 to 3 a.m. ET hour, which earned about 3.7% a year
+over 1998-2020, averaged close to zero over 2021-2025, which covers this
+training window. That agrees with the prediction, which already expects a
+near-zero active return, so the prediction and kill criteria are unchanged.
 
 ## Build state
 
