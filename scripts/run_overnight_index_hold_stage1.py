@@ -25,7 +25,7 @@ from lab.strategies import overnight_index_hold as strat
 
 STRATEGY_ID = "overnight-index-hold"
 EXECUTION = "close_to_open"
-START = "1998-01-01"
+START = "2010-01-01"           # amended 2026-11-24; see the registration
 BINDING_CONSTRAINT = (
     "Execution at the auctions: the backtest buys at the closing auction and "
     "sells at the opening auction, which needs the broker to route "
@@ -71,7 +71,7 @@ def main():
     bars = archive.fund_bars(list(strat.GRID) + ["BIL"], start=START, end=str(pd.Timestamp(end).date()))
     second = pd.read_csv(args.second_source, parse_dates=["date"])
     archive_opens = bars[bars["ticker"].isin(strat.GRID)][["ticker", "date", "open"]]
-    window = (second["date"].min(), pd.Timestamp(end))
+    window = (pd.Timestamp(START), pd.Timestamp(end))
     checks = open_prices.run(archive_opens, second, strat.GRID, *window)
     check_text = open_prices.render(checks) + f"\n  sampled from {window[0]:%Y-%m-%d} to {window[1]:%Y-%m-%d}"
     print(check_text, file=sys.stderr)

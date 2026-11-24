@@ -82,7 +82,7 @@ rules, that is not a fix.
 
 **Flags to report.** Break-even cost per side. The share of the overnight
 return that comes from earnings and macro-news nights. The training figures
-alongside the context history since 1998. Every figure against BIL as well as
+alongside the context history since 2010. Every figure against BIL as well as
 SPY.
 
 **Practical flag, not a gate.** In a taxable account every day is a short-term
@@ -107,6 +107,25 @@ Street Economics) that the 2 to 3 a.m. ET hour, which earned about 3.7% a year
 over 1998-2020, averaged close to zero over 2021-2025, which covers this
 training window. That agrees with the prediction, which already expects a
 near-zero active return, so the prediction and kill criteria are unchanged.
+
+**Amended 2026-11-24, after a failed opening-price check and before any return
+was computed.** The first run stopped at the check, which sampled 250 dates
+per ticker from 1998 to 2025-09-30 against Schwab's daily opens: SPY 1
+disagreeing date (pass), QQQ 4 (fail, worst 1.17%), IWM 5 (fail, worst
+0.91%), against a limit of 2. Run void, nothing recorded. Over every date, not
+just the sample, the disagreement sits before 2010: QQQ 4.4% of dates in
+1998-2004 and 1.7% in 2010-2014, IWM 6.5% in 2005-2009, and no more than 0.1%
+for any ticker over 2020-2025, the span that holds the training window. On
+nearly every disagreeing date both opens lie inside the day's high-low range,
+which points to the two vendors defining the open differently in older data
+rather than to a corrupt series.
+
+The change: the check samples from 2010-01-01, and the context history starts
+there instead of 1998. Nothing else changes: not the training window, the
+holdout, the sizing rules, the cell or the kill criteria. The check reads no
+return, so moving its window cannot select a result; it is still a change made
+after a failure, and is recorded as one. If the check fails again on the
+2010-onward sample, the run is void and the strategy stops here.
 
 ## Build state
 
