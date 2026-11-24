@@ -15,6 +15,16 @@ stay honest.
 ## [Unreleased]
 
 ### Added
+- `overnight-index-hold` is killed at Stage 1. Over the training window SPY
+  held only overnight had an active Sharpe of minus 0.86 against SPY held all
+  day, before any cost; the day session earned 12.2% a year to the night's
+  11.6%. At 504 trades a year each basis point per side costs about 5% a year.
+  Every part of the registered prediction held. The opening-price check had
+  failed on 1998-2009 opens, where two vendors define the open differently, and
+  was amended to start in 2010 before any return was computed.
+- Schwab's market-data API is measured (`docs/schwab-survey.md`): equity
+  history from 1993, live option chains with greeks, and nothing for expired
+  options, so option history has to be recorded forward or bought.
 - The registration of `overnight-index-hold`, under rule set v2 and before any
   overnight or intraday return was computed: SPY bought at the close and sold at
   the next open, against SPY held all day. The prediction is a Stage 1 kill. The

@@ -5,7 +5,7 @@ provenance = "literature"
 source = "Cliff, Cooper & Gulen (2008, working paper), Return differences between trading and non-trading hours; Lou, Polk & Skouras (2019, JFE), A tug of war: overnight versus intraday expected returns; Boyarchenko, Larsen & Whelan (2023, RFS), The overnight drift. Citations recalled from memory and sent to the methods-review literature check on 2026-10-22, before any run."
 account = "individual-margin"
 enabling_step = "Confirm the broker accepts market-on-close and market-on-open (closing and opening auction) orders for ETFs. If not, the execution convention becomes last trade and first trade, and the cost cell rises."
-stage = 0
+stage = 1
 
 [registration]
 registered_on = "2026-10-22"
@@ -156,7 +156,37 @@ orders for ETFs is the enabling step above.
 
 ## Stage results
 
-None yet.
+### Stage 1, run 2026-11-24 (training window only; the holdout was never requested)
+
+Runs, SPY, the verdict: `2f3b600e261d42ee948d6d2b46c1c511` (full, the decision
+book) and `d9189f88ce06438d91524ca775935384` (vol_target). QQQ and IWM ran as
+counted grid trials. One earlier attempt the same day stopped at the
+opening-price check and recorded nothing; the amendment above follows it.
+
+**Opening-price check, 2010 onward: passed.** SPY 0 of 250 dates disagreeing,
+QQQ 1, IWM 1, against a limit of 2.
+
+**What was measured, SPY, training window, 751 days.** Active Sharpe against
+SPY held all day: minus 0.86 at the 0.0% cell, minus 1.22 at the decision cell
+of 0.01% per side. The overnight book earned 11.6% a year before cost against
+12.2% for the day session, so the training years paid for holding the day as
+well as the night. At 504 sides a year each basis point per side costs 5% a
+year: the decision cell's active return over 2010-2025 is minus 11.05% a year,
+and it is negative before any cost. Context, 2010-2025: overnight 8.6% a year,
+day session 6.0%. Against BIL, a flag: the overnight book's active Sharpe 0.21
+at the decision cell, SPY held all day 0.77. QQQ's training-window active
+Sharpe was minus 0.85 and IWM's minus 0.82 at the decision cell, so no grid
+cell differs from SPY's conclusion.
+
+**Prediction scored.** Right: over the context history the night out-earned
+the day; the active return against SPY over training was near zero before
+cost (in fact negative); the active Sharpe at 0.01% was below 1.0; against BIL
+the overnight book was positive but below SPY held all day; a Stage 1 kill.
+Nothing in the prediction was wrong.
+
+**Kill criterion fires.** The active Sharpe at the 0.0% cell, minus 0.86, is
+below 1.0, which ends the strategy with no rescue: no cost cut can lift it
+above its before-cost value.
 
 ## Variants
 
@@ -170,3 +200,4 @@ reason written before the run.
 
 | date | verdict | run id | basis |
 |------|---------|--------|-------|
+| 2026-11-24 | Killed at Stage 1, no rescue | `2f3b600e261d42ee948d6d2b46c1c511` | Training-window active Sharpe against SPY minus 0.86 before cost, minus 1.22 at 0.01% per side; the day session out-earned the night over 2022-2025 |

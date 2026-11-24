@@ -76,23 +76,7 @@ Ranked by information gained per day of work, not by claimed return.
    too volatile. **Amended 2026-10-21:** one re-measurement with Coinbase hourly
    spot, accepted only if the basis noise falls below 0.25% on both coins; if
    not, the kill stands. Recorded in the registration.
-2. **`overnight-index-hold` — SPY held only from the close to the next open.**
-   **Registered 2026-10-22** (`registry/overnight-index-hold.md`, rule set v2),
-   before any overnight or intraday return was computed. Its three citations
-   went to the methods-review literature check the same day; if the published
-   effect sizes differ from the ones recalled, the prediction is amended before
-   any run. Settled at registration: the dividend is credited to the ex-date
-   night, intraday money is cash at zero, and the volatility-targeted size uses
-   data through the previous night. **Built 2026-10-23, not yet run:** the
-   close-to-open frame and its look-ahead test, a round-trip cost mode, the
-   opening-price check, the strategy module and the runner. **Next:** export
-   the broker's daily bars for SPY, QQQ and IWM as the check's second source,
-   then run Stage 1 once. The run is void if the archive's opens disagree with the broker's on more than
-   1% of 250 sampled dates per ticker. Expected to be killed at Stage 1; it is
-   queued because it is cheap and answers whether intraday SPY has earned
-   anything.
-
-3. **Paper-trading capability, lab-wide.** Decided 2026-10-21. Nothing in the
+2. **Paper-trading capability, lab-wide.** Decided 2026-10-21. Nothing in the
    lab can paper trade yet, and the evaluation rules make it the step between a
    clear score and money: it measures whether fills match the assumed costs,
    under a stop rule written before it starts. Needs a forward ledger of
@@ -100,7 +84,7 @@ Ranked by information gained per day of work, not by claimed return.
    was priced from, a daily reconciliation against the backtest's assumed cost,
    and the stop rule as a registered field. Venue-agnostic, so equities and
    Kalshi perpetuals share it.
-4. **Paper trade `crypto-perp-funding-carry` on Kalshi's BTC perpetual.**
+3. **Paper trade `crypto-perp-funding-carry` on Kalshi's BTC perpetual.**
    Decided 2026-10-21, as a test of fills and costs, not of the edge: Kalshi's
    own funding history is 4.5 months and cannot be scored before mid-2027
    (`docs/perp-funding-survey.md`). Before it starts: Kalshi's perpetual fee
@@ -109,7 +93,7 @@ Ranked by information gained per day of work, not by claimed return.
    the coin at another venue, so the paper record has to track margin and the
    liquidation distance, which the Deribit test never needed.
 
-5. **Build the Compustat-to-Sharadar field map for the 23 OSAP entries.** The
+4. **Build the Compustat-to-Sharadar field map for the 23 OSAP entries.** The
    catalogue's claim that 29 entries are testable today rests on an unverified
    assumption that this archive carries the accounting fields the OSAP
    definitions name. Until the map exists, that count means nothing.
@@ -117,7 +101,7 @@ Ranked by information gained per day of work, not by claimed return.
    against the 112 columns of `fundamentals`.
    Routine work, gates the next item and any OSAP entry.
 
-6. **Value-weighting versus equal-weighting across three OSAP entries.** A
+5. **Value-weighting versus equal-weighting across three OSAP entries.** A
    methodology test rather than a strategy, and the highest-value single day in
    the catalogue: it plausibly eliminates half the equity set.
    Depends on the field map above.
@@ -168,6 +152,12 @@ Ranked by information gained per day of work, not by claimed return.
   section 2, item 1.
 
 ## 4. Finished, recorded
+
+- **`overnight-index-hold` killed at Stage 1, 2026-11-24.** Training-window
+  active Sharpe against SPY minus 0.86 before cost, minus 1.22 at 0.01% per side
+  (run `2f3b600e261d42ee948d6d2b46c1c511`). The day session out-earned the night
+  over 2022-2025. The opening-price check was amended to start in 2010 after
+  older opens disagreed between vendors. Record in the registration.
 
 - **The evaluation rules built into the engine, 2026-10-05.** Rule set v2,
   adopted into the shared method on 2026-10-03, is now enforced by code. A
