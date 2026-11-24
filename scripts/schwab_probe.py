@@ -39,7 +39,8 @@ def client():
     os.umask(0o077)   # the library writes the token with default permissions
     c = auth.easy_client(
         api_key=os.environ["SCHWAB_APP_KEY"], app_secret=os.environ["SCHWAB_APP_SECRET"],
-        callback_url=os.environ["SCHWAB_CALLBACK_URL"], token_path=token_path)
+        callback_url=os.environ["SCHWAB_CALLBACK_URL"], token_path=token_path,
+        interactive=False)   # open the browser straight away; no ENTER prompt
     os.chmod(token_path, 0o600)
     return c, token_path
 
